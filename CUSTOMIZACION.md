@@ -71,10 +71,11 @@ Para demo **sin red**, tendrías que descargar también esos CDN y cambiar las e
 3. **Email** — confirmación / marketing post-interacción.
 4. **Ficha cliente** — vista 360 unificada y sesiones Agentforce en Data Cloud.
 
-## Origen de los archivos
+## Publicación
 
-Descargados desde URLs públicas (sin acceso al repositorio Git):
+| Qué | URL |
+|-----|-----|
+| Demo Palonia (este proyecto) | https://sacrich.github.io/palonia-demo/ |
+| Portal EGM (catálogo para AEs) | https://sacrich.github.io/egm-se-demos/ |
 
-- https://jcompan.github.io/Palonia/
-
-No modifiques el sitio original; trabaja solo en esta carpeta `palonia-demo/`.
+Repo: https://github.com/sacrich/palonia-demo
