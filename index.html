@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="assets/demo-base.js"></script>
+  <title>Demo Palonia — Hub de canales</title>
+  <link rel="icon" href="assets/palonia-icon.png" type="image/png">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: Montserrat, system-ui, sans-serif; }
+  </style>
+</head>
+<body class="min-h-screen bg-slate-900 text-white">
+  <header class="border-b border-white/10 bg-slate-950/80">
+    <div class="max-w-3xl mx-auto px-6 py-8 flex flex-col sm:flex-row items-center gap-6">
+      <img src="assets/palonia-primary-logo-white-01.png" alt="Palonia" class="h-12 object-contain">
+      <div class="text-center sm:text-left">
+        <h1 class="text-2xl font-bold tracking-tight">Demo omnicanal — Palonia</h1>
+        <p class="text-slate-400 text-sm mt-1">Agentforce · Data Cloud · Service & Marketing</p>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-3xl mx-auto px-6 py-10">
+    <p class="text-slate-300 text-sm mb-8">
+      Abre cada pantalla en una pestaña para tu presentación. Personaliza textos y logos según
+      <code class="text-emerald-400 bg-slate-800 px-1 rounded">CUSTOMIZACION.md</code>.
+    </p>
+
+    <nav class="grid gap-4 sm:grid-cols-2" aria-label="Canales de demo">
+      <a href="agenticEmailPaloniaEN.html" target="_blank" rel="noopener"
+         class="group block rounded-xl border border-white/10 bg-slate-800/50 p-6 hover:border-emerald-500/50 hover:bg-slate-800 transition">
+        <span class="text-2xl" aria-hidden="true">✉️</span>
+        <h2 class="mt-3 text-lg font-semibold group-hover:text-emerald-400">Email</h2>
+        <p class="text-slate-400 text-sm mt-1">Oferta €4,958 · upsells · enlace a la web</p>
+      </a>
+
+      <a href="agenticwebPaloniaEN.html" target="_blank" rel="noopener"
+         class="group block rounded-xl border border-white/10 bg-slate-800/50 p-6 hover:border-emerald-500/50 hover:bg-slate-800 transition">
+        <span class="text-2xl" aria-hidden="true">🌐</span>
+        <h2 class="mt-3 text-lg font-semibold group-hover:text-emerald-400">Web</h2>
+        <p class="text-slate-400 text-sm mt-1">Portal web · modificación de reserva</p>
+      </a>
+
+      <a href="agenticWhatsappPaloniaModificaReservaEN.html" target="_blank" rel="noopener"
+         class="group block rounded-xl border border-white/10 bg-slate-800/50 p-6 hover:border-emerald-500/50 hover:bg-slate-800 transition">
+        <span class="text-2xl" aria-hidden="true">💬</span>
+        <h2 class="mt-3 text-lg font-semibold group-hover:text-emerald-400">WhatsApp</h2>
+        <p class="text-slate-400 text-sm mt-1">Resumen de oferta · gracias · +10% al día siguiente · compra</p>
+      </a>
+
+      <a href="fichaclientePaloniaEN.html" target="_blank" rel="noopener"
+         class="group block rounded-xl border border-white/10 bg-slate-800/50 p-6 hover:border-emerald-500/50 hover:bg-slate-800 transition">
+        <span class="text-2xl" aria-hidden="true">👤</span>
+        <h2 class="mt-3 text-lg font-semibold group-hover:text-emerald-400">Ficha cliente</h2>
+        <p class="text-slate-400 text-sm mt-1">Perfil 360 · sesiones + journey Email → Web → WA</p>
+      </a>
+
+      <a href="marketingIntelligencePaloniaEN.html" target="_blank" rel="noopener"
+         class="group block rounded-xl border border-white/10 bg-slate-800/50 p-6 hover:border-emerald-500/50 hover:bg-slate-800 transition sm:col-span-2 ring-1 ring-[#0176d3]/40">
+        <span class="text-2xl" aria-hidden="true">📊</span>
+        <h2 class="mt-3 text-lg font-semibold group-hover:text-emerald-400">Marketing Intelligence</h2>
+        <p class="text-slate-400 text-sm mt-1">SPA · Home + Marketing Analytics + Attribution (5 modelos) · misma URL</p>
+      </a>
+    </nav>
+
+    <p class="text-slate-500 text-xs mt-10">
+      Copia local de demos públicas en GitHub Pages. Requiere conexión a internet para React, Tailwind y fuentes (CDN).
+    </p>
+  </main>
+</body>
+</html>

@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="assets/demo-base.js"></script>
+    <title>WhatsApp - Palonia · Offer & Booking</title>
+    <!-- WhatsApp Favicon -->
+    <link rel="icon" href="https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/WhatsApp.svg/120px-WhatsApp.svg.png" type="image/png">
+    
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- React & ReactDOM via CDN -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    
+    <!-- Babel standalone -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        html, body {
+            margin: 0;
+            height: 100%;
+            overflow: hidden;
+        }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background-color: #d1d7db; 
+        }
+        /* MacBook 14" presentation: phone fits viewport without browser zoom */
+        .wa-presentation-stage {
+            height: 100vh;
+            height: 100dvh;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+            box-sizing: border-box;
+            background-color: #d1d7db;
+        }
+        .wa-phone-frame {
+            width: 375px;
+            height: min(700px, calc(100dvh - 20px));
+            max-height: calc(100dvh - 20px);
+            flex-shrink: 0;
+            border-radius: 48px;
+            border: 14px solid #000;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45);
+        }
+        @media (max-height: 820px) {
+            .wa-phone-frame {
+                width: 352px;
+                height: min(640px, calc(100dvh - 16px));
+                max-height: calc(100dvh - 16px);
+                border-width: 12px;
+                border-radius: 44px;
+            }
+        }
+        .bg-chat {
+            background-color: #efeae2;
+            background-image: url("https://w0.peakpx.com/wallpaper/508/606/HD-wallpaper-whatsapp-background-cool-dark-green-light-pattern-patterns-smart-texture-theme.jpg");
+            background-blend-mode: overlay;
+            background-size: cover;
+            background-position: center;
+        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.3); }
+
+        .typing-dot {
+            animation: typing 1.4s infinite ease-in-out both;
+        }
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+        
+        @keyframes typing {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+        
+        .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        const PALONIA_AVATAR = "assets/palonia-icon.png";
+
+        const WA_TS_LOCALE = 'en-US';
+
+        const BOOKING_SUMMARY_CARD = {
+            ref: 'BCL-8472',
+            hotel: 'Palonia Beach Resort',
+            dates: 'Aug 10 – 17, 2024 · 7 nights',
+            guests: '2 adults, 3 children (16, 14, 4)',
+            room: 'Premium Family Room (Connected)',
+            board: 'All-Inclusive (Standard)',
+            roomWas: '€5,833',
+            roomNow: '€4,958',
+            codes: '10PALONIA26 (-10%) · Large Family (-5%)',
+            payAtHotel: [
+                'Wellness & activities from your web session (pay at hotel)',
+                'Optional: Premium All-Inclusive (+€120/day) · Marshlands Excursion (+€280)'
+            ]
+        };
+
+        function formatWaTime(date) {
+            return date.toLocaleTimeString(WA_TS_LOCALE, { hour: 'numeric', minute: '2-digit', hour12: true });
+        }
+
+        function buildHandoffSummaryMessage() {
+            const now = new Date();
+            return {
+                id: 'handoff-summary',
+                sender: 'agent',
+                text: 'Hi Sarah! ✨ As requested on the web, here is your **personalized offer summary** so you can review it with your husband:',
+                time: formatWaTime(now),
+                date: 'Today',
+                status: 'read',
+                bookingCard: BOOKING_SUMMARY_CARD
+            };
+        }
+
+        // Pre-loaded when opening from web handoff — no Alt needed for first message
+        const INITIAL_MESSAGES = [buildHandoffSummaryMessage()];
+
+        function WhatsAppDemo() {
+            const handoffNow = new Date();
+            const [clockTime, setClockTime] = useState(() => formatWaTime(handoffNow));
+
+            const [messages, setMessages] = useState(INITIAL_MESSAGES);
+            const [inputText, setInputText] = useState('');
+            const [isTyping, setIsTyping] = useState(false);
+            const [demoStep, setDemoStep] = useState(1); 
+            
+            const [isSimulatingInput, setIsSimulatingInput] = useState(false);
+            const skipInputTypingRef = useRef(false);
+            const typingTimeoutRef = useRef(null);
+            
+            const chatEndRef = useRef(null);
+            const inputRef = useRef(null);
+
+            const demoStepRef = useRef(demoStep);
+            const isSimulatingRef = useRef(isSimulatingInput);
+            const inputTextRef = useRef(inputText);
+
+            useEffect(() => { demoStepRef.current = demoStep; }, [demoStep]);
+            useEffect(() => { isSimulatingRef.current = isSimulatingInput; }, [isSimulatingInput]);
+            useEffect(() => { inputTextRef.current = inputText; }, [inputText]);
+
+            // Scroll ONLY on message updates or typing status (removed inputText to prevent jitter)
+            useEffect(() => {
+                const scrollToBottom = () => {
+                    chatEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+                };
+                scrollToBottom();
+                const timeoutId = setTimeout(scrollToBottom, 150);
+                return () => clearTimeout(timeoutId);
+            }, [messages, isTyping]);
+
+            // Auto-expand textarea without shrinking to base height every frame (prevents jitter)
+            useEffect(() => {
+                if (inputRef.current) {
+                    if (inputText === '') {
+                        inputRef.current.style.height = '24px';
+                    } else {
+                        inputRef.current.style.height = inputRef.current.scrollHeight + 'px';
+                    }
+                }
+            }, [inputText]);
+
+            useEffect(() => {
+                const handleKeyDown = (e) => {
+                    if (e.key === "Alt" || e.key === "Control" || e.key === "Shift" || e.key === "Meta") return;
+                    
+                    if (isSimulatingRef.current) {
+                        e.preventDefault();
+                        skipInputTypingRef.current = true;
+                        return;
+                    }
+
+                    e.preventDefault();
+
+                    const currentStep = demoStepRef.current;
+                    const currentInput = inputTextRef.current;
+
+                    const startTypingInput = (fullText, nextStep) => {
+                        setIsSimulatingInput(true);
+                        skipInputTypingRef.current = false;
+                        let i = 0;
+
+                        if (inputRef.current) {
+                            inputRef.current.focus();
+                        }
+
+                        const typeNextChar = () => {
+                            if (skipInputTypingRef.current) {
+                                setInputText(fullText);
+                                inputTextRef.current = fullText;
+                                setIsSimulatingInput(false);
+                                setDemoStep(nextStep);
+                                if (inputRef.current) inputRef.current.scrollTop = inputRef.current.scrollHeight;
+                                return;
+                            }
+                            if (i <= fullText.length) {
+                                const currentText = fullText.substring(0, i);
+                                setInputText(currentText);
+                                inputTextRef.current = currentText;
+                                if (inputRef.current) inputRef.current.scrollTop = inputRef.current.scrollHeight;
+                                i++;
+                                typingTimeoutRef.current = setTimeout(typeNextChar, 30 + Math.random() * 45);
+                            } else {
+                                setIsSimulatingInput(false);
+                                setDemoStep(nextStep);
+                            }
+                        };
+                        typeNextChar();
+                    };
+
+                    // Step 1: Sarah types thanks (summary already on screen from web handoff)
+                    if (currentStep === 1) {
+                        startTypingInput("Thank you so much! I'll go through everything with my husband tonight. This is really helpful.", 2);
+                    }
+                    // Step 2: Sarah sends thanks
+                    else if (currentStep === 2) {
+                        handleSendMessage(e);
+                    }
+                    // Step 3: Agent acknowledges
+                    else if (currentStep === 3) {
+                        setIsTyping(false);
+                        const ackAt = new Date();
+                        ackAt.setMinutes(ackAt.getMinutes() + 1);
+                        const ackTime = formatWaTime(ackAt);
+                        setClockTime(ackTime);
+                        setMessages(prev => [...prev, {
+                            id: Date.now(), sender: 'agent', liveDemo: true,
+                            text: 'You\'re very welcome, Sarah! 💙 Take all the time you need — there\'s no pressure.\n\nI\'ll keep an eye on availability for you. Chat tomorrow if you have any questions!',
+                            time: ackTime, date: "Today", status: 'read'
+                        }]);
+                        setDemoStep(4);
+                    }
+                    // Step 4: Next day — extra 10% + booking link
+                    else if (currentStep === 4) {
+                        setClockTime("10:22 AM");
+                        setMessages(prev => [...prev, {
+                            id: Date.now(), sender: 'agent', liveDemo: true,
+                            text: 'Good morning Sarah! ☀️\n\nQuick update on **BCL-8472**: your **Connected Family Room** is still available for Aug 10–17.\n\nI\'ve unlocked an **extra 10% discount** (code **EXTRA10**) on top of your current rate — valid **48 hours**.\n\nNew total: ~~€4,958~~ **€4,462** for the room package.\n\nComplete your booking here:\n🔗 https://palonia.com/book/BCL-8472',
+                            time: "10:22 AM", date: "Tomorrow", status: 'read',
+                            linkPreview: {
+                                type: "large",
+                                title: "Complete Your Booking | Palonia",
+                                desc: "Secure checkout · Connected Family Room · All-Inclusive · EXTRA10 applied",
+                                domain: "palonia.com",
+                                image: "assets/hotel_1.png"
+                            }
+                        }]);
+                        setDemoStep(5);
+                    }
+                    // Step 5: Sarah ready to buy
+                    else if (currentStep === 5) {
+                        startTypingInput("We've discussed it — we're in! I'll complete the booking now with the EXTRA10 discount. Thank you for following up!", 6);
+                    }
+                    // Step 6: Sarah sends
+                    else if (currentStep === 6) {
+                        handleSendMessage(e);
+                    }
+                    // Step 7: Booking confirmed
+                    else if (currentStep === 7) {
+                        setIsTyping(false);
+                        setClockTime("10:24 AM");
+                        setMessages(prev => [...prev, {
+                            id: Date.now(), sender: 'agent', liveDemo: true,
+                            text: 'Wonderful news, Sarah! 🎉\n\nYour stay at **Palonia Beach Resort** is **confirmed** (ref. **BCL-8472**).\n\nYou\'ll receive the confirmation email shortly. We can\'t wait to welcome your family in August! 🌴',
+                            time: "10:24 AM", date: "Tomorrow", status: 'read'
+                        }]);
+                        setDemoStep(8);
+                    }
+                };
+
+                window.addEventListener('keydown', handleKeyDown);
+                return () => window.removeEventListener('keydown', handleKeyDown);
+            }, []);
+
+            const handleSendMessage = (e) => {
+                if (e && e.preventDefault) e.preventDefault();
+                
+                const currentInput = inputTextRef.current || inputText;
+                if (!currentInput.trim() || isSimulatingRef.current) return;
+
+                if (inputRef.current) inputRef.current.blur();
+
+                let msgTime = formatWaTime(new Date());
+                let msgDate = "Today";
+                let nextStep = demoStepRef.current + 1;
+
+                if (demoStepRef.current === 2) {
+                    msgTime = formatWaTime(new Date());
+                    msgDate = "Today";
+                    nextStep = 3;
+                }
+                else if (demoStepRef.current === 6) {
+                    msgTime = "10:23 AM";
+                    msgDate = "Tomorrow";
+                    nextStep = 7;
+                }
+
+                setClockTime(msgTime);
+
+                setMessages(prev => [...prev, {
+                    id: Date.now(),
+                    sender: 'user',
+                    text: currentInput.trim(),
+                    time: msgTime,
+                    date: msgDate,
+                    status: 'sent' 
+                }]);
+                
+                setInputText('');
+                inputTextRef.current = '';
+                setIsTyping(true);
+                
+                setDemoStep(nextStep);
+            };
+
+            const formatText = (text) => {
+                // Split text to match bold markdown and URLs
+                const parts = text.split(/(\*\*.*?\*\*|https?:\/\/[^\s]+)/g);
+                return parts.map((part, index) => {
+                    if (part.startsWith('**') && part.endsWith('**')) {
+                        return <strong key={index}>{part.slice(2, -2)}</strong>;
+                    } else if (part.startsWith('http')) {
+                        return (
+                            <a 
+                                key={index} 
+                                href={part} 
+                                target="_blank" 
+                                rel="noopener noreferrer" 
+                                className="text-[#027eb5] hover:underline"
+                            >
+                                {part}
+                            </a>
+                        );
+                    }
+                    return part;
+                });
+            };
+
+            return (
+                <div className="wa-presentation-stage">
+                    {/* iPhone Container — sized for 14" MacBook presenter view */}
+                    <div className="wa-phone-frame bg-white flex flex-col overflow-hidden relative ring-1 ring-gray-900/10">
+                        
+                        {/* Dynamic Island */}
+                        <div className="absolute top-2.5 left-1/2 -translate-x-1/2 w-[108px] h-[32px] bg-black rounded-full z-50"></div>
+
+                        {/* iOS Status Bar */}
+                        <div className="flex h-[48px] bg-[#008069] w-full items-center justify-between px-7 text-white font-semibold text-[13px] shrink-0 pt-2.5 z-40 relative">
+                            <span className="w-16 text-center ml-1">{clockTime}</span>
+                            <div className="flex gap-2 items-center text-[14px] mr-1">
+                                <i className="fa-solid fa-signal"></i>
+                                <i className="fa-solid fa-wifi"></i>
+                                <i className="fa-solid fa-battery-full text-[17px]"></i>
+                            </div>
+                        </div>
+
+                        {/* WhatsApp Header */}
+                        <div className="bg-[#008069] text-white flex items-center px-3 pb-2.5 pt-1 shadow-md z-10 shrink-0 relative">
+                            <div className="flex items-center gap-2.5 flex-1 cursor-pointer">
+                                <i className="fa-solid fa-chevron-left text-xl mr-0.5 text-green-100"></i>
+                                <div className="relative">
+                                    <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center overflow-hidden shadow-sm">
+                                        <img src={PALONIA_AVATAR} alt="Palonia" className="w-full h-full object-cover" />
+                                    </div>
+                                    <div className="absolute -bottom-1 -right-1 bg-white rounded-full w-4 h-4 flex items-center justify-center shadow-sm">
+                                        <i className="fa-solid fa-certificate text-[#008069] text-[12px]"></i>
+                                        <i className="fa-solid fa-check absolute text-white text-[8px] mt-[1px]"></i>
+                                    </div>
+                                </div>
+                                <div>
+                                    <h1 className="font-semibold text-[16px] leading-tight flex items-center gap-1">
+                                        Palonia Hotel Group
+                                    </h1>
+                                    <p className="text-[12px] text-green-100">Verified business account</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-5 text-xl">
+                                <i className="fa-solid fa-video cursor-pointer hover:text-gray-200 transition-colors"></i>
+                                <i className="fa-solid fa-phone cursor-pointer hover:text-gray-200 transition-colors"></i>
+                                <i className="fa-solid fa-ellipsis-vertical cursor-pointer hover:text-gray-200 transition-colors"></i>
+                            </div>
+                        </div>
+
+                        {/* Chat Area */}
+                        <div className="flex-1 bg-chat overflow-y-auto p-4 flex flex-col gap-2 relative">
+                            
+                            {/* Security Banner (Now inside chat flow to scroll with messages) */}
+                            <div className="flex justify-center mb-2 mt-2">
+                                <div className="bg-[#ffeecd] text-[#544c45] text-[11.5px] px-3 py-1.5 rounded-lg text-center shadow-sm max-w-[95%] leading-snug flex gap-2 items-center">
+                                    <i className="fa-solid fa-lock text-[#008069]"></i>
+                                    <span>Messages and calls are end-to-end encrypted. No one outside of this chat can read or listen to them.</span>
+                                </div>
+                            </div>
+                            
+                            {(() => {
+                                let currentDate = null;
+                                return messages.map((msg, index) => {
+                                    const isNewDate = msg.date !== currentDate;
+                                    currentDate = msg.date;
+                                    const isNewMessage = msg.liveDemo === true;
+                                    const animateIn = isNewMessage || msg.id === 'handoff-summary';
+
+                                    return (
+                                        <React.Fragment key={msg.id}>
+                                            {isNewDate && (
+                                                <div className={`flex justify-center my-2 ${animateIn ? 'fade-in' : ''}`}>
+                                                    <span className="bg-[#e1f3fb] text-[#54656f] text-xs px-3 py-1 rounded-lg shadow-sm font-medium uppercase tracking-wide">
+                                                        {msg.date}
+                                                    </span>
+                                                </div>
+                                            )}
+                                            <div className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'} mb-1 ${animateIn ? 'fade-in' : ''}`}>
+                                                <div className={`relative max-w-[85%] rounded-lg px-2.5 py-1.5 text-[14.2px] shadow-sm ${msg.sender === 'user' ? 'bg-[#dcf8c6] rounded-tr-none' : 'bg-white rounded-tl-none'} whitespace-pre-wrap`}>
+                                                    
+                                                    {msg.bookingCard && (
+                                                        <div className="mb-2 mt-0.5 bg-[#f0f2f5] rounded-xl overflow-hidden border border-gray-200/60 text-left">
+                                                            <img src="assets/hotel_1.png" alt="Palonia Beach Resort" className="w-full h-28 object-cover border-b border-gray-200/60" />
+                                                            <div className="p-3">
+                                                                <p className="text-[10px] font-bold text-[#008069] uppercase tracking-wide mb-1">Booking summary · {msg.bookingCard.ref}</p>
+                                                                <h3 className="text-[#111b21] font-bold text-[14px]">{msg.bookingCard.hotel}</h3>
+                                                                <p className="text-[12px] text-[#667781] mt-1">{msg.bookingCard.dates}</p>
+                                                                <p className="text-[12px] text-[#667781]">{msg.bookingCard.guests}</p>
+                                                                <div className="mt-2 pt-2 border-t border-gray-200/80 space-y-1 text-[12px]">
+                                                                    <p><span className="text-[#8696a0]">Room:</span> <strong>{msg.bookingCard.room}</strong></p>
+                                                                    <p><span className="text-[#8696a0]">Board:</span> {msg.bookingCard.board}</p>
+                                                                    <p className="pt-1">
+                                                                        <span className="text-gray-400 line-through mr-2">{msg.bookingCard.roomWas}</span>
+                                                                        <strong className="text-[#111b21] text-[15px]">{msg.bookingCard.roomNow}</strong>
+                                                                    </p>
+                                                                    <p className="text-[10px] text-[#008069] font-semibold">{msg.bookingCard.codes}</p>
+                                                                </div>
+                                                                <ul className="mt-2 text-[11px] text-[#667781] list-disc pl-4 space-y-0.5">
+                                                                    {msg.bookingCard.payAtHotel.map((line, i) => <li key={i}>{line}</li>)}
+                                                                </ul>
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Link Preview component */}
+                                                    {msg.linkPreview && (
+                                                        <div className={`mb-2 mt-0.5 bg-[#f0f2f5] rounded-xl overflow-hidden border border-gray-200/60 flex w-full cursor-pointer hover:bg-gray-100 transition-colors ${msg.linkPreview.type === 'small' ? 'flex-row items-center h-[88px]' : 'flex-col'}`}>
+                                                            <div className={`${msg.linkPreview.type === 'small' ? 'w-[88px] h-full shrink-0 bg-white/50 flex items-center justify-center p-3 border-r border-gray-200/60' : 'w-full'}`}>
+                                                                <img src={msg.linkPreview.image} alt="Link preview" className={`${msg.linkPreview.type === 'small' ? 'w-full h-full object-contain drop-shadow-sm' : 'w-full h-32 object-cover border-b border-gray-200/60'}`} />
+                                                            </div>
+                                                            <div className="p-2.5 flex-1 min-w-0">
+                                                                <h3 className="text-[#111b21] font-semibold text-[13.5px] line-clamp-1">{msg.linkPreview.title}</h3>
+                                                                <p className="text-[#667781] text-[12.5px] line-clamp-2 mt-0.5 leading-snug">{msg.linkPreview.desc}</p>
+                                                                <p className="text-[#8696a0] text-[10.5px] mt-1.5 uppercase font-medium tracking-wide">{msg.linkPreview.domain}</p>
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    <div className="text-[#111b21] pb-3">
+                                                        {formatText(msg.text)}
+                                                    </div>
+                                                    <div className="absolute bottom-1 right-2 flex items-center gap-1 text-[10px] text-gray-500">
+                                                        <span>{msg.time}</span>
+                                                        {msg.sender === 'user' && (
+                                                            <i className="fa-solid fa-check-double text-[#53bdeb]"></i>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </React.Fragment>
+                                    );
+                                });
+                            })()}
+
+                            {isTyping && (
+                                <div className="flex justify-start mb-1 fade-in">
+                                    <div className="bg-white rounded-lg rounded-tl-none px-4 py-3 shadow-sm flex items-center gap-1">
+                                        <div className="w-1.5 h-1.5 bg-gray-400 rounded-full typing-dot"></div>
+                                        <div className="w-1.5 h-1.5 bg-gray-400 rounded-full typing-dot"></div>
+                                        <div className="w-1.5 h-1.5 bg-gray-400 rounded-full typing-dot"></div>
+                                    </div>
+                                </div>
+                            )}
+                            <div ref={chatEndRef} />
+                        </div>
+
+                        {/* Input Bar */}
+                        <div className="bg-[#f0f2f5] p-2 flex items-end gap-2 shrink-0">
+                            <div className="text-gray-500 text-2xl flex items-center h-10 gap-3 px-2 cursor-pointer mb-0.5">
+                                <i className="fa-regular fa-face-smile hover:text-gray-600 transition-colors"></i>
+                                <i className="fa-solid fa-paperclip hover:text-gray-600 transition-colors"></i>
+                            </div>
+                            
+                            <form onSubmit={handleSendMessage} className="flex-1 flex bg-white rounded-xl overflow-hidden px-3 py-2 shadow-sm mb-0.5">
+                                <textarea
+                                    ref={inputRef}
+                                    value={inputText}
+                                    onChange={(e) => { if (!isSimulatingInput) setInputText(e.target.value); }}
+                                    placeholder="Type a message"
+                                    className="w-full text-[15px] outline-none text-[#111b21] bg-transparent resize-none overflow-y-auto leading-[22px] pt-0.5"
+                                    rows="1"
+                                    style={{ minHeight: '24px', maxHeight: '110px' }}
+                                    readOnly={demoStep >= 8}
+                                />
+                            </form>
+                            
+                            <div className="h-10 flex items-center justify-center shrink-0 mb-0.5">
+                                {inputText.trim() ? (
+                                    <button onClick={handleSendMessage} disabled={isSimulatingInput} className="w-10 h-10 rounded-full bg-[#00a884] text-white flex items-center justify-center shadow-sm cursor-pointer hover:bg-[#008f6f] transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed">
+                                        <i className="fa-solid fa-paper-plane ml-1 text-[16px]"></i>
+                                    </button>
+                                ) : (
+                                    <div className="w-10 h-10 rounded-full bg-[#00a884] text-white flex items-center justify-center shadow-sm cursor-pointer hover:bg-[#008f6f] transition-colors">
+                                        <i className="fa-solid fa-microphone text-[16px]"></i>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* iOS Home Indicator */}
+                        <div className="flex w-full h-[28px] bg-[#f0f2f5] items-end justify-center pb-1.5 shrink-0">
+                            <div className="w-[120px] h-[4px] bg-gray-800 rounded-full"></div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<WhatsAppDemo />);
+    </script>
+</body>
+</html>

@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="assets/demo-base.js"></script>
+    <title>Marketing Intelligence | Palonia Demo</title>
+    <link rel="icon" href="assets/palonia-icon.png" type="image/png">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+    <style>
+        :root {
+            --sf-blue: #0176d3; --sf-blue-dark: #032d60; --sf-bg: #eef4fb;
+            --sf-card: #fff; --sf-border: #d8dde6; --sf-text: #181818;
+            --sf-muted: #706e6b; --sf-success: #2e844a; --sf-error: #ba0517;
+            --sf-sidebar: #fafaf9;
+        }
+        * { box-sizing: border-box; }
+        body { font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--sf-bg); color: var(--sf-text); margin: 0; font-size: 13px; }
+        .view { display: none; }
+        .view.active { display: block; }
+        .app-launcher { display: grid; grid-template-columns: repeat(3, 4px); grid-template-rows: repeat(3, 4px); gap: 3px; padding: 6px 8px 6px 4px; cursor: pointer; flex-shrink: 0; }
+        .app-launcher span { width: 4px; height: 4px; background: #5c5c5c; border-radius: 50%; }
+        .sf-header { background: var(--sf-card); border-bottom: 1px solid var(--sf-border); }
+        .sf-header-row1 { height: 48px; display: flex; align-items: center; padding: 0 12px 0 0; gap: 8px; }
+        .sf-header-row2 { height: 36px; display: flex; align-items: center; padding: 0 16px; border-top: 1px solid #f0f0f0; background: #fafafa; font-size: 12px; color: var(--sf-muted); gap: 8px; }
+        .sf-tab { padding: 14px 12px 10px; cursor: pointer; color: var(--sf-muted); font-size: 13px; white-space: nowrap; border-bottom: 2px solid transparent; }
+        .sf-tab:hover { color: var(--sf-text); }
+        .sf-tab.active { color: var(--sf-blue); border-bottom-color: var(--sf-blue); font-weight: 600; }
+        .sf-sidebar { width: 268px; background: var(--sf-sidebar); border-right: 1px solid var(--sf-border); flex-shrink: 0; overflow-y: auto; }
+        .sf-nav-item { padding: 7px 12px 7px 32px; cursor: pointer; font-size: 13px; border-left: 3px solid transparent; }
+        .sf-nav-item:hover { background: #eef4ff; }
+        .sf-nav-item.active { background: #d8e6fe; border-left-color: var(--sf-blue); color: var(--sf-blue-dark); font-weight: 600; }
+        .sf-nav-group { font-size: 12px; font-weight: 700; padding: 10px 12px 4px; display: flex; align-items: center; gap: 6px; }
+        .sf-card { background: var(--sf-card); border: 1px solid var(--sf-border); border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+        .sf-card-h { padding: 12px 14px; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 8px; }
+        .sf-banner { background: linear-gradient(90deg, #032d60, #014486); color: #fff; }
+        .sf-pill { display: inline-flex; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; border: 1px solid; }
+        .sf-pill-good { background: #ecfdf3; color: var(--sf-success); border-color: #bbf7d0; }
+        .sf-pill-warn { background: #fff7ed; color: #c2410c; border-color: #fed7aa; }
+        .sf-pill-low { background: #fef2f2; color: #ba0517; border-color: #fecaca; }
+        .hex-icon { width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%); font-size: 11px; color: #fff; flex-shrink: 0; }
+        .toggle-pill { display: inline-flex; border: 1px solid var(--sf-border); border-radius: 999px; overflow: hidden; font-size: 11px; }
+        .toggle-pill button { padding: 5px 12px; border: none; background: #fff; cursor: pointer; }
+        .toggle-pill button.on { background: var(--sf-blue); color: #fff; }
+        .widget-foot { padding: 8px 14px; border-top: 1px solid #eee; font-size: 10px; color: var(--sf-muted); display: flex; justify-content: space-between; align-items: center; }
+        .metric-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 1px solid #f0f0f0; gap: 8px; }
+        .metric-row:last-child { border-bottom: none; }
+        .metric-row .spark { width: 110px; height: 48px; flex-shrink: 0; }
+        .metric-val { font-size: 24px; font-weight: 700; line-height: 1.1; }
+        .action-row { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid #f5f5f5; font-size: 12px; }
+        .action-row:last-of-type { border-bottom: none; }
+        .chart-donut { height: min(42vh, 400px); min-height: 300px; position: relative; flex: 1; }
+        .chart-donut-lg { height: min(36vh, 340px); min-height: 280px; }
+        .chart-bar-h { height: min(40vh, 380px); min-height: 300px; flex: 1; }
+        .chart-bar-stack { height: 360px; }
+        .chart-mini-area { height: 72px; }
+        .donut-center-label { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; font-weight: 700; text-align: center; }
+        .donut-center-label .text-lg { font-size: 1.35rem; }
+        .home-widget-chart { display: flex; flex-direction: column; min-height: 0; }
+        .home-widget-chart .chart-donut,
+        .home-widget-chart .chart-bar-h { width: 100%; }
+        table.sf-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+        table.sf-table th { text-align: left; padding: 8px 10px; background: #f8f9fb; border-bottom: 1px solid var(--sf-border); font-weight: 600; color: var(--sf-muted); white-space: nowrap; }
+        table.sf-table td { padding: 8px 10px; border-bottom: 1px solid #f0f0f0; }
+        table.sf-table tr:hover td { background: #fafbfc; }
+        .sf-datatable-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        table.sf-datatable { width: 100%; border-collapse: collapse; font-size: 12px; color: #181818; }
+        table.sf-datatable thead th {
+            background: #f3f3f3; border-bottom: 2px solid #c9c9c9; font-weight: 700; font-size: 11px;
+            color: #444; padding: 10px 12px; white-space: nowrap; text-align: left;
+        }
+        table.sf-datatable thead th.num { text-align: right; }
+        table.sf-datatable tbody td { padding: 9px 12px; border-bottom: 1px solid #e5e5e5; vertical-align: middle; }
+        table.sf-datatable tbody td.num { text-align: right; font-variant-numeric: tabular-nums; }
+        table.sf-datatable tbody tr:hover td { background: #f3f6fb; }
+        table.sf-datatable td.cell-null { color: #706e6b; }
+        table.sf-datatable .name-cell { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        table.sf-datatable .name-cell-wide { max-width: 240px; }
+        .kpi-grid-card { padding: 14px; border-right: 1px solid #f0f0f0; }
+        .kpi-grid-card:last-child { border-right: none; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+        .home-grid {
+            display: grid;
+            grid-template-columns: minmax(260px, 0.95fr) minmax(380px, 1.35fr) minmax(280px, 0.85fr);
+            gap: 10px;
+            align-items: stretch;
+            min-height: calc(100vh - 130px);
+        }
+        .home-col { display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+        .home-col-chart { flex: 1; display: flex; flex-direction: column; }
+        @media (max-width: 1280px) {
+            .home-grid { grid-template-columns: 1fr; min-height: auto; }
+            .chart-donut, .chart-bar-h { min-height: 260px; height: 280px; }
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+    <header class="sf-header shrink-0">
+        <div class="sf-header-row1">
+            <button class="app-launcher" type="button" aria-label="App Launcher">
+                <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+            </button>
+            <i class="fa-brands fa-salesforce text-[#00a1e0] text-[26px] shrink-0"></i>
+            <span class="font-semibold text-[15px] shrink-0 hidden sm:inline">Marketing Intelligence</span>
+            <nav class="flex items-end h-full ml-2 gap-0 overflow-x-auto" id="mainTabs">
+                <span class="sf-tab active" data-tab="home">Home</span>
+                <span class="sf-tab" data-tab="data">Data Management</span>
+                <span class="sf-tab" data-tab="analytics">Marketing Analytics</span>
+                <span class="sf-tab" data-tab="attribution">Attribution</span>
+            </nav>
+            <div class="flex-1 max-w-md mx-auto hidden lg:block px-4">
+                <div class="relative">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                    <input class="w-full pl-9 pr-3 py-1.5 rounded-full border border-gray-300 text-sm bg-gray-50" placeholder="Search..." />
+                </div>
+            </div>
+            <div class="flex items-center gap-4 text-gray-500 shrink-0 ml-auto header-utilities">
+                <i class="fa-solid fa-star cursor-pointer hover:text-[#c5a059] transition" title="Favorites"></i>
+                <i class="fa-solid fa-plus cursor-pointer hover:text-gray-800 transition text-lg" title="Create"></i>
+                <i class="fa-solid fa-circle-question cursor-pointer hover:text-gray-800 transition text-lg" title="Help"></i>
+                <i class="fa-solid fa-gear cursor-pointer hover:text-gray-800 transition text-lg" title="Setup"></i>
+                <div class="relative cursor-pointer hover:text-gray-800 transition" title="Notifications">
+                    <i class="fa-solid fa-bell text-lg"></i>
+                    <span class="absolute -top-1 -right-1 bg-red-500 w-2.5 h-2.5 rounded-full border-2 border-white"></span>
+                </div>
+                <div class="ml-2 w-8 h-8 rounded-full bg-[#1a222d] flex items-center justify-center text-white text-xs font-bold cursor-pointer" title="Profile">AG</div>
+            </div>
+        </div>
+        <div class="sf-header-row2">
+            <span>Data Space</span><span class="text-gray-300">|</span><span>Business Unit</span>
+            <select class="border border-gray-300 rounded px-2 py-0.5 text-xs bg-white"><option>default</option><option>Palonia_EU</option></select>
+        </div>
+    </header>
+
+    <div class="flex flex-1 overflow-hidden">
+        <aside class="sf-sidebar hidden lg:flex flex-col" id="sidebar">
+            <div class="p-3 border-b"><input type="text" placeholder="Search dashboards..." class="w-full px-2 py-1.5 text-xs border border-gray-300 rounded bg-white" /></div>
+            <div id="sidebarNav" class="flex-1 py-1 text-sm"></div>
+            <div class="p-3 border-t text-xs text-[#0176d3] font-medium">Tableau Next Builder</div>
+        </aside>
+
+        <main class="flex-1 overflow-y-auto p-3" id="mainContent">
+
+            <!-- ================= HOME ================= -->
+            <div class="view active" id="view-home">
+                <div class="flex justify-end mb-2"><button class="text-gray-500 hover:text-[#0176d3] text-sm"><i class="fa-solid fa-pen"></i> Edit</button></div>
+                <div class="home-grid">
+                    <!-- COL 1 -->
+                    <div class="space-y-3">
+                        <div class="sf-card overflow-hidden">
+                            <div class="sf-card-h"><h2 class="font-bold text-sm">Campaign Summary</h2><i class="fa-regular fa-circle-question text-gray-400 text-xs"></i><span class="text-[10px] text-gray-500 ml-auto">Last 30 days</span></div>
+                            <div class="sf-banner px-3 py-2 flex justify-between items-center text-xs">
+                                <span class="font-semibold">Overall Performance | 6 metrics</span>
+                                <span class="sf-pill sf-pill-good text-white border-white/30 bg-white/15"><i class="fa-solid fa-battery-three-quarters mr-1"></i> Very High</span>
+                            </div>
+                            <div class="p-3 text-[11px] leading-relaxed text-gray-700">
+                                Palonia portfolio is strong: <strong>ROAS 4.12</strong>, <strong>Conversion Rate 3.8%</strong>, <strong>CTR 2.41%</strong>.
+                                <em>Unforgettable Summer</em> (Email → Adaptive Web → WhatsApp) leads with <strong>47 bookings</strong> and <strong>CPA €41.20</strong>.
+                                Watch <strong>CPM €12.25</strong> on Meta retargeting. <strong>CPC €0.51</strong> on Google prospecting.
+                            </div>
+                            <div class="px-3 py-2 border-t bg-gray-50 flex justify-between items-center">
+                                <button class="bg-[#0176d3] text-white text-[11px] font-semibold px-3 py-1 rounded"><i class="fa-solid fa-plus mr-1"></i> Optimize</button>
+                                <span class="text-[10px] text-gray-500">Last refreshed: Mon, Jun 01, 2026, 9:47 AM <i class="fa-solid fa-rotate ml-0.5"></i></span>
+                            </div>
+                        </div>
+                        <div class="sf-card">
+                            <div class="sf-card-h"><h2 class="font-bold text-sm">Recommended Actions</h2></div>
+                            <div class="action-row"><i class="fa-solid fa-bullseye text-[#0176d3] w-5"></i><span class="flex-1">Boost WhatsApp follow-up for Adaptive Web abandoners</span><a href="#" class="text-[#0176d3] text-[11px] font-semibold whitespace-nowrap">Create Now</a></div>
+                            <div class="action-row"><i class="fa-solid fa-layer-group text-[#7e57c2] w-5"></i><span class="flex-1">Classify EXTRA10 cohort vs. standard summer rate</span><a href="#" class="text-[#0176d3] text-[11px] font-semibold">Create Now</a></div>
+                            <div class="action-row"><i class="fa-solid fa-diagram-project text-[#2e844a] w-5"></i><span class="flex-1">Create anchor campaign: Family Email → WA</span><a href="#" class="text-[#0176d3] text-[11px] font-semibold">Create Now</a></div>
+                            <div class="action-row"><i class="fa-solid fa-chart-line text-[#e5a000] w-5"></i><span class="flex-1">Set Q3 revenue goal — Coast + Wellness bundles</span><a href="#" class="text-[#0176d3] text-[11px] font-semibold">Create Now</a></div>
+                            <div class="widget-foot"><a href="#" class="text-[#0176d3]">View More</a><span>Last refreshed: 9:47 AM</span></div>
+                        </div>
+                        <div class="sf-card p-3">
+                            <div class="flex items-center gap-2 mb-2"><div class="hex-icon bg-[#0176d3]"><i class="fa-solid fa-flag"></i></div><h2 class="font-bold text-sm">Goals</h2></div>
+                            <div class="grid grid-cols-3 gap-2 text-center text-[11px]">
+                                <div class="border rounded p-2"><p class="text-gray-500">Active</p><p class="text-xl font-bold text-[#0176d3]">2</p></div>
+                                <div class="border rounded p-2"><p class="text-gray-500">Not Started</p><p class="text-xl font-bold">1</p></div>
+                                <div class="border rounded p-2"><p class="text-gray-500">Expired</p><p class="text-xl font-bold text-gray-400">0</p></div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- COL 2 -->
+                    <div class="space-y-3">
+                        <div class="sf-card p-3">
+                            <div class="flex items-start gap-2 mb-2">
+                                <div class="hex-icon bg-[#ff5d2d]"><i class="fa-solid fa-share-nodes"></i></div>
+                                <div class="flex-1"><h2 class="font-bold text-sm">My Channels</h2><p class="text-[10px] text-gray-500">Last 30 days</p></div>
+                                <div class="toggle-pill"><button class="on" id="btnRev">Total Revenue</button><button id="btnSpend">Total Spend</button></div>
+                            </div>
+                            <div class="chart-donut relative">
+                                <canvas id="homeChannelsDonut"></canvas>
+                                <div class="donut-center-label" id="donutCenterLabel"><span class="text-lg" id="donutCenterVal">€281.6K</span><span class="text-[10px] text-gray-500 font-normal">Total Revenue</span></div>
+                            </div>
+                            <div class="widget-foot"><a href="#" class="text-[#0176d3]">View More</a><span>Last refreshed: 9:47 AM</span></div>
+                        </div>
+                        <div class="sf-card p-3">
+                            <div class="flex flex-wrap items-center gap-2 mb-2">
+                                <div class="hex-icon bg-[#7e57c2]"><i class="fa-solid fa-bullhorn"></i></div>
+                                <h2 class="font-bold text-sm flex-1">My Campaigns</h2>
+                                <div class="toggle-pill text-[10px]"><button class="on">Campaign</button><button>Anchor</button></div>
+                            </div>
+                            <p class="text-[10px] text-gray-500 mb-2">Show <strong>Top Performing</strong> by <strong>Revenue</strong> <a href="#" class="text-[#0176d3] ml-1">Update</a></p>
+                            <div class="chart-bar-h"><canvas id="homeCampaignsBar"></canvas></div>
+                            <div class="widget-foot"><a href="#" class="text-[#0176d3]">View More</a><span>Last refreshed: 9:47 AM</span></div>
+                        </div>
+                    </div>
+                    <!-- COL 3 -->
+                    <div class="space-y-3">
+                        <div class="sf-card">
+                            <div class="sf-card-h pb-2">
+                                <div class="hex-icon bg-[#0176d3]"><i class="fa-solid fa-chart-simple"></i></div>
+                                <div><h2 class="font-bold text-sm">Key Metrics</h2><p class="text-[10px] text-gray-500">Last 30 days</p></div>
+                            </div>
+                            <div class="metric-row"><div><p class="text-[11px] text-gray-500">Spend</p><p class="metric-val">€68,240</p></div><div class="spark"><canvas id="homeSparkSpend"></canvas></div></div>
+                            <div class="metric-row"><div><p class="text-[11px] text-gray-500">Revenue</p><p class="metric-val">€281.6K</p></div><div class="spark"><canvas id="homeSparkRev"></canvas></div></div>
+                            <div class="metric-row"><div><p class="text-[11px] text-gray-500">ROAS</p><p class="metric-val">413%</p></div><div class="spark"><canvas id="homeSparkRoas"></canvas></div></div>
+                            <div class="metric-row"><div><p class="text-[11px] text-gray-500">ROI</p><p class="metric-val">313%</p></div><div class="spark"><canvas id="homeSparkRoi"></canvas></div></div>
+                            <div class="widget-foot"><a href="#" class="text-[#0176d3]">View More</a><span>9:47 AM</span></div>
+                        </div>
+                        <div class="sf-card p-3">
+                            <div class="flex items-center gap-2 mb-2"><div class="hex-icon bg-[#7e57c2]"><i class="fa-solid fa-link"></i></div><h2 class="font-bold text-sm">Harmonization</h2></div>
+                            <p class="text-[11px] text-gray-600 mb-2">Data Enrichments: <strong>4</strong> · Palonia booking ID, channel, journey stage</p>
+                            <div class="h-2 rounded-full bg-gray-200 overflow-hidden flex"><span class="bg-[#2e844a] w-[85%]"></span><span class="bg-[#e5a000] w-[10%]"></span><span class="bg-[#ba0517] w-[5%]"></span></div>
+                            <div class="flex gap-3 mt-2 text-[10px]"><span><span class="status-dot bg-[#2e844a]"></span> Synced</span><span><span class="status-dot bg-[#e5a000]"></span> Pending</span><span><span class="status-dot bg-[#ba0517]"></span> Error (1)</span></div>
+                            <div class="widget-foot mt-2 border-t pt-2 px-0"><a href="#" class="text-[#0176d3]">View More</a><span>9:47 AM</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ================= ANALYTICS ================= -->
+            <div class="view" id="view-analytics">
+                <div class="flex items-center gap-2 mb-3">
+                    <span class="w-8 h-8 rounded bg-blue-50 flex items-center justify-center"><i class="fa-solid fa-chart-line text-[#0176d3]"></i></span>
+                    <div><p class="text-xs text-gray-500">Overview</p><h1 class="text-lg font-bold text-[#032d60]">Performance Overview</h1></div>
+                </div>
+                <div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-3 mb-3">
+                    <div class="sf-card p-3"><p class="text-xs text-gray-500">Bookings</p><p class="text-2xl font-bold">67</p><div class="h-14 mt-1"><canvas id="anBookings"></canvas></div></div>
+                    <div class="sf-card p-3"><p class="text-xs text-gray-500">Revenue</p><p class="text-2xl font-bold">€281.6K</p><div class="h-14 mt-1"><canvas id="anRevenue"></canvas></div></div>
+                    <div class="sf-card p-3"><p class="text-xs text-gray-500">Spend</p><p class="text-2xl font-bold">€68.2K</p><div class="h-14 mt-1"><canvas id="anSpend"></canvas></div></div>
+                    <div class="sf-card p-3"><p class="text-xs text-gray-500">ROAS</p><p class="text-2xl font-bold">413%</p><div class="h-14 mt-1"><canvas id="anRoas"></canvas></div></div>
+                </div>
+                <div class="grid lg:grid-cols-2 gap-3 mb-3">
+                    <div class="sf-card p-3"><h3 class="font-bold text-sm mb-2">Revenue by Channel</h3><div class="chart-donut"><canvas id="anRevDonut"></canvas></div></div>
+                    <div class="sf-card p-3"><h3 class="font-bold text-sm mb-2">Bookings by Channel</h3><div class="chart-bar-h"><canvas id="anChBar"></canvas></div></div>
+                </div>
+
+                <div class="sf-card overflow-hidden mb-3">
+                    <div class="px-4 py-3 border-b border-gray-200 bg-white">
+                        <h2 class="font-bold text-[15px] text-[#181818]">Performance By Campaign</h2>
+                    </div>
+                    <div class="sf-datatable-wrap">
+                        <table class="sf-datatable" id="analyticsPerfTable">
+                            <thead>
+                                <tr>
+                                    <th>Campaign Name</th>
+                                    <th>Ad Name</th>
+                                    <th>Media Buy Name</th>
+                                    <th class="num">Sum of Spend</th>
+                                    <th class="num">Sum of Campaign Budget</th>
+                                    <th class="num">Sum of Revenue</th>
+                                    <th class="num">Sum of Impressions</th>
+                                    <th class="num">Sum of Clicks</th>
+                                    <th class="num">CPC</th>
+                                    <th class="num">CTR</th>
+                                    <th class="num">CPA</th>
+                                    <th class="num">CPM</th>
+                                    <th class="num">Sum of Bookings</th>
+                                </tr>
+                            </thead>
+                            <tbody id="analyticsPerfBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ================= ATTRIBUTION ================= -->
+            <div class="view" id="view-attribution">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="w-8 h-8 rounded bg-blue-50 flex items-center justify-center"><i class="fa-solid fa-chart-column text-[#0176d3]"></i></span>
+                    <div>
+                        <p class="text-xs text-[#0176d3] font-medium">Attribution</p>
+                        <h1 class="text-lg font-bold" id="attrTitle">Last Touch</h1>
+                    </div>
+                </div>
+                <p class="text-xs text-gray-500 mb-3" id="attrDesc"></p>
+
+                <h2 class="font-bold text-sm mb-2">Overview · Spend to Revenue</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 mb-4" id="attrOverviewCards"></div>
+
+                <h2 class="font-bold text-sm mb-2">Key Metrics · Channel breakdown</h2>
+                <div class="grid md:grid-cols-2 gap-3 mb-4">
+                    <div class="sf-card p-3"><h3 class="font-semibold text-xs text-gray-600 mb-1">Total Leads Per Channel</h3><div class="chart-donut-lg"><canvas id="attrLeadsDonut"></canvas></div></div>
+                    <div class="sf-card p-3"><h3 class="font-semibold text-xs text-gray-600 mb-1">Total Opportunities Per Channel</h3><div class="chart-donut-lg"><canvas id="attrOppsDonut"></canvas></div></div>
+                    <div class="sf-card p-3"><h3 class="font-semibold text-xs text-gray-600 mb-1">Total Spend Per Channel</h3><div class="chart-donut-lg"><canvas id="attrSpendDonut"></canvas></div></div>
+                    <div class="sf-card p-3"><h3 class="font-semibold text-xs text-gray-600 mb-1">Total Revenue Per Channel</h3><div class="chart-donut-lg"><canvas id="attrRevDonut"></canvas></div></div>
+                </div>
+
+                <h2 class="font-bold text-sm mb-2">Funnel KPIs · <span id="attrKpiLabel">Last Touch</span></h2>
+                <div class="sf-card grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 mb-4" id="attrKpiRow"></div>
+
+                <h2 class="font-bold text-sm mb-2">Analysis</h2>
+                <div class="grid lg:grid-cols-2 gap-3 mb-4">
+                    <div class="sf-card p-3"><h3 class="font-semibold text-xs mb-2">Lead Status by Campaign</h3><div class="chart-bar-stack"><canvas id="attrLeadStack"></canvas></div></div>
+                    <div class="sf-card p-3"><h3 class="font-semibold text-xs mb-2">Opportunity Stages by Campaign</h3><div class="chart-bar-stack"><canvas id="attrOppStack"></canvas></div></div>
+                </div>
+
+                <div class="sf-card p-3 overflow-x-auto mb-4">
+                    <h3 class="font-bold text-sm mb-2">Performance by Campaign · <span id="attrTableLabel">Last Touch</span></h3>
+                    <table class="sf-table" id="attrTable"></table>
+                </div>
+            </div>
+
+            <div class="view" id="view-data">
+                <div class="sf-card p-10 text-center text-gray-500 max-w-lg mx-auto mt-8">
+                    <i class="fa-solid fa-database text-4xl text-gray-300 mb-3"></i>
+                    <h2 class="font-bold">Data Management</h2>
+                    <p class="text-sm mt-2">Streams: Email Agent, Adaptive Web, WhatsApp, Google Ads, Meta Ads, GA4.</p>
+                </div>
+            </div>
+
+            <p class="text-center text-[10px] text-gray-400 py-4"><a href="index.html" class="text-[#0176d3]">Palonia demo hub</a></p>
+        </main>
+    </div>
+
+    <script>
+        Chart.register(ChartDataLabels);
+        const charts = {};
+        const DATE_LABELS = ['Oct 17', 'Nov 02', 'Nov 18', 'Dec 04', 'Dec 21'];
+
+        const HOME_CHANNELS = ['Email Agent', 'Adaptive Web', 'WhatsApp', 'Google Ads', 'Meta Ads'];
+        const HOME_CHANNEL_COLORS = ['#0176d3', '#1b96ff', '#25D366', '#4285F4', '#0668E1'];
+        const HOME_REV = [62.4, 54.8, 48.2, 38.6, 77.6];
+        const HOME_SPEND = [12.2, 10.8, 9.4, 18.2, 17.6];
+
+        const ATTR_CHANNELS = ['Email Agent', 'Adaptive Web', 'WhatsApp', 'Google Ads', 'Meta Ads', 'LinkedIn', 'Connected TV', 'YouTube'];
+        const ATTR_COLORS = ['#0176d3', '#1b96ff', '#25D366', '#4285F4', '#0668E1', '#0a66c2', '#7e57c2', '#e31937'];
+
+        const CAMPAIGNS = [
+            'EU_PAL_Summer_Family_Email_WA',
+            'EU_PAL_Loyalty_Reactivation',
+            'AMER_Coast_Flash_Meta',
+            'EU_Wellness_Upsell_Web',
+            'APAC_Family_Retarget_GAds',
+            'EU_EXTRA10_WA_Conversion'
+        ];
+
+        const CAMPAIGN_TABLE = [
+            { name: 'EU_PAL_Summer_Family_Email_WA', ch: 'Email / Web / WA', mql: 132, sql: 33, cac: '4.59K', roas: '13.82', roi: '12.82', ttc: '0.88' },
+            { name: 'EU_PAL_Loyalty_Reactivation', ch: 'Email', mql: 48, sql: 12, cac: '3.21K', roas: '8.40', roi: '7.40', ttc: '1.12' },
+            { name: 'AMER_Coast_Flash_Meta', ch: 'Meta Ads', mql: 86, sql: 18, cac: '5.10K', roas: '6.20', roi: '5.20', ttc: '1.45' },
+            { name: 'EU_Wellness_Upsell_Web', ch: 'Adaptive Web', mql: 64, sql: 15, cac: '3.88K', roas: '9.10', roi: '8.10', ttc: '0.95' },
+            { name: 'APAC_Family_Retarget_GAds', ch: 'Google Ads', mql: 72, sql: 14, cac: '4.02K', roas: '7.55', roi: '6.55', ttc: '1.20' },
+            { name: 'EU_EXTRA10_WA_Conversion', ch: 'WhatsApp', mql: 41, sql: 22, cac: '3.45K', roas: '11.20', roi: '10.20', ttc: '0.72' },
+            { name: 'EU_LinkedIn_Corporate_Retreat', ch: 'LinkedIn', mql: 28, sql: 6, cac: '6.80K', roas: '4.90', roi: '3.90', ttc: '2.10' },
+            { name: 'EU_CTV_Brand_Awareness', ch: 'Connected TV', mql: 19, sql: 3, cac: '8.20K', roas: '3.10', roi: '2.10', ttc: '2.80' }
+        ];
+
+        const ATTRIBUTION_MODELS = {
+            'first-touch': {
+                title: 'First Touch',
+                desc: 'Credit to the first marketing interaction in the journey.',
+                credit: { leads: [55, 12, 8, 10, 8, 4, 2, 1], opps: [52, 14, 6, 11, 9, 5, 2, 1], spend: [48, 14, 10, 12, 10, 4, 1, 1], revenue: [54, 13, 7, 11, 8, 5, 1, 1] },
+                overview: [
+                    { label: 'First Touch Spend', value: '€32.8K', cmp: '312 vs. prior', spark: [22, 24, 26, 28, 30, 31, 32.8], type: 'area' },
+                    { label: 'First Touch Leads', value: '412', cmp: '412 vs. prior', spark: [380, 390, 398, 405, 408, 410, 412], type: 'line' },
+                    { label: 'First Touch Contacts', value: '398', cmp: '398 vs. prior', spark: [360, 370, 378, 385, 390, 395, 398], type: 'line' },
+                    { label: 'First Touch Negotiations', value: '18', cmp: '18 vs. prior', spark: [8, 10, 12, 14, 15, 17, 18], type: 'bar' },
+                    { label: 'First Touch Opportunities', value: '121', cmp: '121 vs. prior', spark: [95, 102, 108, 112, 116, 119, 121], type: 'area' },
+                    { label: 'First Touch Revenue', value: '€152K', cmp: '152K vs. prior', spark: [120, 128, 135, 142, 146, 149, 152], type: 'area' }
+                ],
+                kpis: { mql: 412, sql: 98, cac: '3.35K', roas: '4.63', roi: '3.63', ttc: '1.05' }
+            },
+            'last-touch': {
+                title: 'Last Touch',
+                desc: 'Credit to the final channel before conversion — WhatsApp & paid media close Palonia journeys.',
+                credit: { leads: [8, 14, 38, 16, 12, 5, 4, 3], opps: [6, 12, 42, 15, 11, 6, 5, 3], spend: [10, 12, 35, 18, 14, 5, 4, 2], revenue: [7, 15, 44, 14, 10, 5, 3, 2] },
+                overview: [
+                    { label: 'Last Touch Spend', value: '€28.9K', cmp: '275 vs. prior', spark: [20, 22, 24, 25, 27, 28, 28.9], type: 'area' },
+                    { label: 'Last Touch Leads', value: '275', cmp: '275 vs. prior', spark: [240, 250, 258, 265, 270, 273, 275], type: 'line' },
+                    { label: 'Last Touch Contacts', value: '275', cmp: '275 vs. prior', spark: [235, 248, 255, 262, 268, 272, 275], type: 'line' },
+                    { label: 'Last Touch Negotiations', value: '0', cmp: 'No data in range', spark: [0, 0, 0, 0, 0, 0, 0], type: 'bar', empty: true },
+                    { label: 'Last Touch Opportunities', value: '121', cmp: '121 vs. prior', spark: [88, 95, 102, 108, 114, 118, 121], type: 'area' },
+                    { label: 'Last Touch Revenue', value: '€139K', cmp: '7.67M scale demo', spark: [95, 105, 115, 122, 128, 134, 139], type: 'area' }
+                ],
+                kpis: { mql: 275, sql: 33, cac: '4.59K', roas: '13.82', roi: '12.82', ttc: '0.88' }
+            },
+            'w-shape': {
+                title: 'W-Shape',
+                desc: '30% first touch · 40% mid-funnel (Web) · 30% close — aligned to Email → Adaptive Web → WhatsApp.',
+                credit: { leads: [28, 35, 22, 6, 5, 2, 1, 1], opps: [26, 38, 20, 7, 5, 2, 1, 1], spend: [30, 38, 22, 5, 3, 1, 1, 0], revenue: [27, 40, 21, 6, 4, 1, 1, 0] },
+                overview: [
+                    { label: 'W-Shape Spend', value: '€48.1K', cmp: 'Blended', spark: [40, 42, 44, 45, 46, 47, 48.1], type: 'area' },
+                    { label: 'W-Shape Leads', value: '340', cmp: '340 vs. prior', spark: [300, 310, 318, 325, 332, 336, 340], type: 'line' },
+                    { label: 'W-Shape Contacts', value: '328', cmp: '328 vs. prior', spark: [290, 300, 308, 315, 320, 325, 328], type: 'line' },
+                    { label: 'W-Shape Negotiations', value: '12', cmp: '12 vs. prior', spark: [4, 6, 7, 8, 10, 11, 12], type: 'bar' },
+                    { label: 'W-Shape Opportunities', value: '121', cmp: '121 vs. prior', spark: [90, 98, 105, 110, 115, 118, 121], type: 'area' },
+                    { label: 'W-Shape Revenue', value: '€198K', cmp: 'Full portfolio', spark: [150, 165, 175, 182, 190, 195, 198], type: 'area' }
+                ],
+                kpis: { mql: 340, sql: 78, cac: '4.12K', roas: '4.12', roi: '3.12', ttc: '0.98' }
+            },
+            'linear': {
+                title: 'Linear',
+                desc: 'Equal credit distributed across every touchpoint in the path.',
+                credit: { leads: [14, 14, 14, 12, 12, 11, 12, 11], opps: [13, 13, 13, 12, 12, 12, 12, 13], spend: [13, 13, 13, 12, 12, 12, 12, 13], revenue: [13, 13, 13, 12, 12, 12, 12, 13] },
+                overview: [
+                    { label: 'Linear Spend', value: '€48.1K', cmp: 'Equal weight', spark: [48, 48, 48, 48, 48, 48, 48.1], type: 'line' },
+                    { label: 'Linear Leads', value: '340', cmp: '340 vs. prior', spark: [310, 318, 322, 328, 332, 336, 340], type: 'line' },
+                    { label: 'Linear Contacts', value: '335', cmp: '335 vs. prior', spark: [305, 312, 318, 324, 328, 332, 335], type: 'line' },
+                    { label: 'Linear Negotiations', value: '9', cmp: '9 vs. prior', spark: [5, 6, 7, 7, 8, 8, 9], type: 'bar' },
+                    { label: 'Linear Opportunities', value: '121', cmp: '121 vs. prior', spark: [100, 105, 108, 112, 115, 118, 121], type: 'area' },
+                    { label: 'Linear Revenue', value: '€198K', cmp: 'Even split', spark: [170, 178, 184, 188, 192, 196, 198], type: 'area' }
+                ],
+                kpis: { mql: 340, sql: 72, cac: '4.15K', roas: '4.12', roi: '3.12', ttc: '1.02' }
+            },
+            'time-decay': {
+                title: 'Time Decay',
+                desc: 'Exponential decay — recent touches (WhatsApp, Web) receive more credit than early Email.',
+                credit: { leads: [12, 22, 32, 14, 10, 5, 3, 2], opps: [10, 24, 34, 13, 9, 5, 3, 2], spend: [11, 20, 34, 15, 11, 5, 3, 1], revenue: [11, 23, 35, 14, 9, 4, 2, 2] },
+                overview: [
+                    { label: 'Decay Spend', value: '€48.1K', cmp: 'Recency weighted', spark: [38, 41, 43, 45, 46, 47, 48.1], type: 'area' },
+                    { label: 'Decay Leads', value: '298', cmp: '298 vs. prior', spark: [260, 270, 278, 285, 290, 295, 298], type: 'line' },
+                    { label: 'Decay Contacts', value: '292', cmp: '292 vs. prior', spark: [255, 265, 272, 280, 286, 290, 292], type: 'line' },
+                    { label: 'Decay Negotiations', value: '7', cmp: '7 vs. prior', spark: [2, 3, 4, 5, 5, 6, 7], type: 'bar' },
+                    { label: 'Decay Opportunities', value: '121', cmp: '121 vs. prior', spark: [85, 92, 100, 108, 114, 118, 121], type: 'area' },
+                    { label: 'Decay Revenue', value: '€186K', cmp: 'WA-heavy', spark: [140, 152, 162, 170, 178, 183, 186], type: 'area' }
+                ],
+                kpis: { mql: 298, sql: 68, cac: '3.98K', roas: '4.35', roi: '3.35', ttc: '0.82' }
+            }
+        };
+
+        let currentTab = 'home';
+        let currentAttrModel = 'last-touch';
+        let homeDonutMode = 'revenue';
+
+        const donutPlugin = {
+            id: 'donutCenter',
+            afterDraw(chart) {
+                if (chart.config.type !== 'doughnut' || !chart.config.options.plugins?.donutCenterText) return;
+                const { ctx, chartArea: { top, bottom, left, right } } = chart;
+                const cx = (left + right) / 2;
+                const cy = (top + bottom) / 2;
+                ctx.save();
+                ctx.textAlign = 'center';
+                ctx.fillStyle = '#181818';
+                ctx.font = 'bold 14px Inter';
+                ctx.fillText(chart.config.options.plugins.donutCenterText, cx, cy + 4);
+                ctx.restore();
+            }
+        };
+        Chart.register(donutPlugin);
+
+        function destroyChart(id) { if (charts[id]) { charts[id].destroy(); delete charts[id]; } }
+
+        const miniSparkOpts = {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false }, datalabels: { display: false }, tooltip: { enabled: true, displayColors: false } },
+            scales: { x: { display: false }, y: { display: false } },
+            elements: { point: { radius: 0 }, line: { borderWidth: 2, tension: 0.4 } }
+        };
+
+        function makeMiniSpark(id, data, color = '#0176d3', fill = true) {
+            destroyChart(id);
+            const el = document.getElementById(id);
+            if (!el) return;
+            charts[id] = new Chart(el, {
+                type: 'line',
+                data: {
+                    labels: DATE_LABELS.concat(['']),
+                    datasets: [{
+                        data,
+                        borderColor: color,
+                        backgroundColor: fill ? color + '22' : 'transparent',
+                        fill: fill
+                    }]
+                },
+                options: miniSparkOpts
+            });
+        }
+
+        function makeRichDonut(id, values, labels, legendRight = true) {
+            destroyChart(id);
+            const el = document.getElementById(id);
+            if (!el) return;
+            const total = values.reduce((a, b) => a + b, 0);
+            charts[id] = new Chart(el, {
+                type: 'doughnut',
+                data: {
+                    labels,
+                    datasets: [{ data: values, backgroundColor: labels.map((_, i) => ATTR_COLORS[i % ATTR_COLORS.length] || HOME_CHANNEL_COLORS[i % 5]), borderWidth: 2, borderColor: '#fff' }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false, cutout: '58%',
+                    layout: { padding: 8 },
+                    plugins: {
+                        legend: { position: legendRight ? 'right' : 'bottom', labels: { boxWidth: 10, font: { size: 10 }, padding: 8 } },
+                        datalabels: {
+                            color: '#fff', font: { weight: 'bold', size: 9 },
+                            formatter: (v, ctx) => {
+                                const pct = Math.round(v / total * 100);
+                                return pct >= 4 ? (v > 50 ? pct + '%' : v) : '';
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function initHomeCharts() {
+            const revData = homeDonutMode === 'revenue' ? HOME_REV : HOME_SPEND;
+            destroyChart('homeChannelsDonut');
+            const el = document.getElementById('homeChannelsDonut');
+            const total = revData.reduce((a, b) => a + b, 0);
+            document.getElementById('donutCenterVal').textContent = homeDonutMode === 'revenue' ? '€' + total.toFixed(1) + 'K' : '€' + total.toFixed(1) + 'K';
+            document.querySelector('#donutCenterLabel span:last-child').textContent = homeDonutMode === 'revenue' ? 'Total Revenue' : 'Total Spend';
+            charts.homeChannelsDonut = new Chart(el, {
+                type: 'doughnut',
+                data: { labels: HOME_CHANNELS, datasets: [{ data: revData, backgroundColor: HOME_CHANNEL_COLORS, borderWidth: 2, borderColor: '#fff' }] },
+                options: {
+                    responsive: true, maintainAspectRatio: false, cutout: '62%',
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 8, font: { size: 10 } } },
+                        datalabels: { color: '#fff', font: { size: 10, weight: 'bold' }, formatter: v => v >= 15 ? '€' + v + 'K' : '' }
+                    }
+                }
+            });
+            destroyChart('homeCampaignsBar');
+            charts.homeCampaignsBar = new Chart(document.getElementById('homeCampaignsBar'), {
+                type: 'bar',
+                data: {
+                    labels: CAMPAIGNS,
+                    datasets: [{ data: [98.4, 52.1, 31.2, 28.6, 24.8, 46.2], backgroundColor: '#9050e9', borderRadius: 2 }]
+                },
+                options: {
+                    indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false }, datalabels: { anchor: 'end', align: 'end', color: '#444', font: { size: 10 }, formatter: v => '€' + v + 'K' } },
+                    scales: {
+                        x: { grid: { color: '#eee' }, ticks: { callback: v => '€' + v + 'K', font: { size: 10 } } },
+                        y: { grid: { display: false }, ticks: { font: { size: 9 }, callback: function(v) { const l = this.getLabelForValue(v); return l.length > 28 ? l.slice(0, 26) + '…' : l; } } }
+                    }
+                }
+            });
+            makeMiniSpark('homeSparkSpend', [58, 62, 64, 66, 67, 68, 68.2], '#7e57c2');
+            makeMiniSpark('homeSparkRev', [210, 235, 248, 262, 272, 278, 281.6], '#0176d3');
+            makeMiniSpark('homeSparkRoas', [360, 375, 388, 398, 405, 410, 413], '#2e844a');
+            makeMiniSpark('homeSparkRoi', [260, 275, 288, 298, 305, 310, 313], '#014486', false);
+        }
+
+        document.getElementById('btnRev')?.addEventListener('click', () => { homeDonutMode = 'revenue'; document.getElementById('btnRev').classList.add('on'); document.getElementById('btnSpend').classList.remove('on'); initHomeCharts(); });
+        document.getElementById('btnSpend')?.addEventListener('click', () => { homeDonutMode = 'spend'; document.getElementById('btnSpend').classList.add('on'); document.getElementById('btnRev').classList.remove('on'); initHomeCharts(); });
+
+        const PERFORMANCE_BY_CAMPAIGN = [
+            { campaign: 'EU_PAL_Summer_Family_Email_WA_Aug2026', ad: null, media: null, spend: 12480, budget: 18500.00, revenue: 98400, impressions: 428650, clicks: 3842, cpc: 3.25, ctr: 0.009, cpa: 41.20, cpm: 29.14, bookings: 47 },
+            { campaign: '', ad: 'Email_Agent_Summer_Family_Offer', media: null, spend: 3200, budget: 4500.00, revenue: 52100, impressions: 186420, clicks: 1624, cpc: 1.97, ctr: 0.0087, cpa: 38.10, cpm: 17.17, bookings: 28 },
+            { campaign: '', ad: 'AdaptiveWeb_Personalization_Landing', media: null, spend: 2180, budget: 3200.00, revenue: 28400, impressions: 142800, clicks: 986, cpc: 2.21, ctr: 0.0069, cpa: 44.50, cpm: 15.26, bookings: 12 },
+            { campaign: '', ad: 'WA_Followup_EXTRA10_Conversion', media: 'WA_PAL_Summer_Family_Nurture', spend: 2100, budget: 2800.00, revenue: 17900, impressions: 98420, clicks: 612, cpc: 3.43, ctr: 0.0062, cpa: 35.00, cpm: 21.34, bookings: 7 },
+            { campaign: '', ad: 'GAds_EU_Family_Summer_Retarget', media: 'GAds_EU_Search_Family_Aug', spend: 5000, budget: 8000.00, revenue: 0, impressions: 1010, clicks: 620, cpc: 8.06, ctr: 0.0061, cpa: null, cpm: 67.17, bookings: 0 },
+            { campaign: 'EU_PAL_Loyalty_Reactivation_Q3', ad: null, media: null, spend: 4820, budget: 6200.00, revenue: 52100, impressions: 198340, clicks: 1288, cpc: 3.74, ctr: 0.0065, cpa: 48.20, cpm: 24.30, bookings: 12 },
+            { campaign: '', ad: 'Email_Loyalty_WINBACK_2026', media: null, spend: 4820, budget: 6200.00, revenue: 52100, impressions: 198340, clicks: 1288, cpc: 3.74, ctr: 0.0065, cpa: 48.20, cpm: 24.30, bookings: 12 },
+            { campaign: 'AMER_Coast_Flash_Meta_July2026', ad: null, media: null, spend: 8940, budget: 12000.00, revenue: 31200, impressions: 512800, clicks: 2144, cpc: 4.17, ctr: 0.0042, cpa: 62.10, cpm: 17.45, bookings: 8 },
+            { campaign: '', ad: 'Meta_AMER_Coast_Video_15s', media: 'FB_AMER_Coast_Prospecting_Aug', spend: 5240, budget: 7000.00, revenue: 18600, impressions: 312400, clicks: 1186, cpc: 4.42, ctr: 0.0038, cpa: 71.40, cpm: 16.78, bookings: 5 },
+            { campaign: '', ad: 'Meta_AMER_Coast_Carousel_Family', media: 'FB_AMER_Coast_Retarget_LAL', spend: 3700, budget: 5000.00, revenue: 12600, impressions: 200400, clicks: 958, cpc: 3.86, ctr: 0.0048, cpa: 52.80, cpm: 18.46, bookings: 3 },
+            { campaign: 'EU_Wellness_Upsell_AdaptiveWeb', ad: null, media: null, spend: 2860, budget: 4000.00, revenue: 28600, impressions: 88420, clicks: 742, cpc: 3.85, ctr: 0.0084, cpa: 52.00, cpm: 32.35, bookings: 15 },
+            { campaign: '', ad: null, media: 'Web_PAL_Wellness_Banner_Homepage', spend: 1640, budget: 2200.00, revenue: 14200, impressions: 52100, clicks: 418, cpc: 3.92, ctr: 0.0080, cpa: 54.70, cpm: 31.48, bookings: 8 },
+            { campaign: '', ad: 'Web_SPA_Activity_Widget_CTA', media: null, spend: 1220, budget: 1800.00, revenue: 14400, impressions: 36320, clicks: 324, cpc: 3.77, ctr: 0.0089, cpa: 48.80, cpm: 33.59, bookings: 7 },
+            { campaign: 'APAC_Family_Retarget_GAds_Q3', ad: null, media: null, spend: 6120, budget: 9500.00, revenue: 24800, impressions: 224600, clicks: 892, cpc: 6.86, ctr: 0.0040, cpa: 68.00, cpm: 27.25, bookings: 6 },
+            { campaign: '', ad: 'GAds_APAC_Family_Search_Brand', media: 'GAds_APAC_Family_Dev_Search', spend: 4120, budget: 6000.00, revenue: 16200, impressions: 142200, clicks: 524, cpc: 7.86, ctr: 0.0037, cpa: 72.10, cpm: 28.98, bookings: 4 },
+            { campaign: '', ad: 'GAds_APAC_Display_Retarget', media: 'GAds_APAC_Display_RMK', spend: 2000, budget: 3500.00, revenue: 8600, impressions: 82400, clicks: 368, cpc: 5.43, ctr: 0.0045, cpa: 58.80, cpm: 24.27, bookings: 2 }
+        ];
+
+        function fmtNum(n) {
+            if (n == null || n === '') return null;
+            return Number(n).toLocaleString('en-US', { maximumFractionDigits: 2 });
+        }
+
+        function fmtCell(val, isNum) {
+            if (val == null) return '<td class="cell-null">null</td>';
+            if (val === '') return '<td></td>';
+            if (isNum) return `<td class="num">${fmtNum(val)}</td>`;
+            const wide = String(val).length > 32 ? ' name-cell-wide' : '';
+            return `<td class="name-cell${wide}" title="${String(val).replace(/"/g, '&quot;')}">${val}</td>`;
+        }
+
+        function renderAnalyticsPerfTable() {
+            const body = document.getElementById('analyticsPerfBody');
+            if (!body) return;
+            body.innerHTML = PERFORMANCE_BY_CAMPAIGN.map(row => `
+                <tr>
+                    ${fmtCell(row.campaign || null, false)}
+                    ${fmtCell(row.ad, false)}
+                    ${fmtCell(row.media, false)}
+                    ${fmtCell(row.spend, true)}
+                    ${fmtCell(row.budget, true)}
+                    ${fmtCell(row.revenue, true)}
+                    ${fmtCell(row.impressions, true)}
+                    ${fmtCell(row.clicks, true)}
+                    ${fmtCell(row.cpc, true)}
+                    ${fmtCell(row.ctr, true)}
+                    ${fmtCell(row.cpa, true)}
+                    ${fmtCell(row.cpm, true)}
+                    ${fmtCell(row.bookings, true)}
+                </tr>
+            `).join('');
+        }
+
+        function initAnalyticsCharts() {
+            renderAnalyticsPerfTable();
+            makeMiniSpark('anBookings', [42, 48, 55, 60, 64, 66, 67], '#0176d3');
+            makeMiniSpark('anRevenue', [210, 235, 248, 262, 272, 278, 281.6]);
+            makeMiniSpark('anSpend', [58, 62, 64, 66, 67, 68, 68.2], '#7e57c2');
+            makeMiniSpark('anRoas', [360, 375, 388, 398, 405, 410, 413], '#2e844a');
+            makeRichDonut('anRevDonut', HOME_REV, HOME_CHANNELS, false);
+            destroyChart('anChBar');
+            charts.anChBar = new Chart(document.getElementById('anChBar'), {
+                type: 'bar',
+                data: { labels: HOME_CHANNELS, datasets: [{ data: [22, 18, 15, 6, 6], backgroundColor: HOME_CHANNEL_COLORS, borderRadius: 3 }] },
+                options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, datalabels: { display: true, color: '#fff', font: { size: 10 } } }, scales: { x: { grid: { color: '#eee' } }, y: { grid: { display: false } } } }
+            });
+        }
+
+        function renderAttrOverview(model) {
+            const wrap = document.getElementById('attrOverviewCards');
+            wrap.innerHTML = model.overview.map((c, i) => `
+                <div class="sf-card p-3 flex flex-col">
+                    <p class="text-[11px] text-gray-500">${c.label}</p>
+                    <p class="text-xs text-gray-400">All</p>
+                    <p class="text-xl font-bold mt-1">${c.value}</p>
+                    <p class="text-[10px] text-gray-500">${c.cmp}</p>
+                    <div class="chart-mini-area mt-2 flex-1"><canvas id="attrOv${i}"></canvas></div>
+                    <p class="text-[9px] text-gray-400 mt-1 flex justify-between"><span>Oct 17, 2025</span><span>Dec 21, 2025</span></p>
+                    ${c.empty ? '<p class="text-[10px] text-amber-700 mt-1">No data available for selected range.</p>' : '<p class="text-[10px] text-[#0176d3] mt-1"><i class="fa-solid fa-diamond text-[6px]"></i> Analyzing your data</p>'}
+                </div>
+            `).join('');
+            setTimeout(() => {
+                model.overview.forEach((c, i) => {
+                    const id = 'attrOv' + i;
+                    destroyChart(id);
+                    const el = document.getElementById(id);
+                    if (!el) return;
+                    const color = ['#0176d3', '#7e57c2', '#2e844a', '#e5a000', '#014486', '#ba0517'][i];
+                    if (c.type === 'bar') {
+                        charts[id] = new Chart(el, {
+                            type: 'bar',
+                            data: { labels: DATE_LABELS, datasets: [{ data: c.spark, backgroundColor: color + '99', borderRadius: 2 }] },
+                            options: { ...miniSparkOpts, plugins: { ...miniSparkOpts.plugins, datalabels: { display: false } } }
+                        });
+                    } else {
+                        charts[id] = new Chart(el, {
+                            type: 'line',
+                            data: { labels: DATE_LABELS, datasets: [{ data: c.spark, borderColor: color, backgroundColor: color + '33', fill: c.type === 'area' }] },
+                            options: miniSparkOpts
+                        });
+                    }
+                });
+            }, 60);
+        }
+
+        function renderAttrKpis(model) {
+            const p = model.kpis;
+            const t = model.title;
+            document.getElementById('attrKpiLabel').textContent = t;
+            document.getElementById('attrKpiRow').innerHTML = `
+                <div class="kpi-grid-card"><p class="text-[10px] text-gray-500">${t} MQL</p><p class="text-2xl font-bold">${p.mql}</p><p class="text-[10px] text-gray-500 mt-2">Oct 17 – Dec 21, 2025. Top of funnel across Email, Web & WA.</p></div>
+                <div class="kpi-grid-card"><p class="text-[10px] text-gray-500">${t} SQL</p><p class="text-2xl font-bold">${p.sql}</p><p class="text-[10px] text-gray-500 mt-2">Qualified leads after Adaptive Web personalization.</p></div>
+                <div class="kpi-grid-card"><p class="text-[10px] text-gray-500">${t} CAC</p><p class="text-2xl font-bold">${p.cac}</p><p class="text-[10px] text-gray-500 mt-2">${p.cac} vs. prior period</p></div>
+                <div class="kpi-grid-card"><p class="text-[10px] text-gray-500">${t} ROAS</p><p class="text-2xl font-bold">${p.roas}</p><p class="text-[10px] text-gray-500 mt-2">${p.roas} vs. prior period</p></div>
+                <div class="kpi-grid-card"><p class="text-[10px] text-gray-500">${t} ROI</p><p class="text-2xl font-bold">${p.roi}</p><p class="text-[10px] text-gray-500 mt-2">${p.roi} vs. prior period</p></div>
+                <div class="kpi-grid-card"><p class="text-[10px] text-gray-500">${t} TTC</p><p class="text-2xl font-bold">${p.ttc}</p><p class="text-[10px] text-gray-500 mt-2">Time to conversion (days) · Palonia summer cohort.</p></div>
+            `;
+        }
+
+        const LEAD_STACK = [[11,8,6,9,7],[6,5,4,7,5],[22,14,11,18,12],[4,3,2,5,3],[8,6,5,7,6]];
+        const OPP_STACK = [[3,2,2,4,2],[14,9,7,11,8],[5,4,3,6,4],[2,1,1,3,2],[6,5,4,5,4],[4,3,2,4,3]];
+
+        function initAttrStackedBars() {
+            const campaigns = CAMPAIGNS.slice(0, 5);
+            const leadStatuses = ['New', 'Nurturing', 'Qualified', 'Unqualified', 'Working'];
+            const leadColors = ['#0176d3', '#9050e9', '#2e844a', '#06a59a', '#fe9339'];
+            destroyChart('attrLeadStack');
+            charts.attrLeadStack = new Chart(document.getElementById('attrLeadStack'), {
+                type: 'bar',
+                data: {
+                    labels: campaigns,
+                    datasets: leadStatuses.map((s, i) => ({
+                        label: s,
+                        data: LEAD_STACK[i],
+                        backgroundColor: leadColors[i],
+                        borderRadius: 1
+                    }))
+                },
+                options: {
+                    indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                    scales: { x: { stacked: true, grid: { color: '#eee' } }, y: { stacked: true, ticks: { font: { size: 8 } } } },
+                    plugins: { legend: { position: 'right', labels: { boxWidth: 10, font: { size: 10 } } }, datalabels: { color: '#fff', font: { size: 9 }, formatter: v => v > 3 ? v : '' } }
+                }
+            });
+            const oppStages = ['Closed Lost', 'Closed Won', 'Needs Analysis', 'Negotiation', 'Qualification', 'Value Prop'];
+            const oppColors = ['#0176d3', '#9050e9', '#2e844a', '#032d60', '#fe9339', '#06a59a'];
+            destroyChart('attrOppStack');
+            charts.attrOppStack = new Chart(document.getElementById('attrOppStack'), {
+                type: 'bar',
+                data: {
+                    labels: campaigns,
+                    datasets: oppStages.map((s, i) => ({
+                        label: s,
+                        data: OPP_STACK[i],
+                        backgroundColor: oppColors[i],
+                        borderRadius: 1
+                    }))
+                },
+                options: {
+                    indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                    scales: { x: { stacked: true }, y: { stacked: true, ticks: { font: { size: 8 } } } },
+                    plugins: { legend: { position: 'right', labels: { boxWidth: 10, font: { size: 9 } } }, datalabels: { color: '#fff', font: { size: 8 }, formatter: v => v > 2 ? v : '' } }
+                }
+            });
+        }
+
+        function scaleCredit(pcts, totals) {
+            return pcts.map(p => Math.round(totals * p / 100));
+        }
+
+        function renderAttrTable(modelKey) {
+            const m = ATTRIBUTION_MODELS[modelKey];
+            const prefix = m.title.split(' ')[0] === 'Time' ? 'Decay' : m.title.split(' ')[0];
+            document.getElementById('attrTableLabel').textContent = m.title;
+            document.getElementById('attrTable').innerHTML = `
+                <thead><tr>
+                    <th>Campaign Name</th><th>Channel</th><th>Ad / Journey</th>
+                    <th>${m.title} MQL</th><th>${m.title} SQL</th><th>${m.title} CAC</th>
+                    <th>${m.title} ROAS</th><th>${m.title} ROI</th><th>${m.title} TTC</th>
+                </tr></thead>
+                <tbody>${CAMPAIGN_TABLE.map(r => `
+                    <tr>
+                        <td class="font-medium max-w-[180px]">${r.name}</td>
+                        <td>${r.ch}</td>
+                        <td class="text-gray-500">Agentic / Paid</td>
+                        <td>${r.mql}</td>
+                        <td>${r.sql}</td>
+                        <td>${r.cac}</td>
+                        <td>${r.roas}</td>
+                        <td>${r.roi}</td>
+                        <td>${r.ttc}</td>
+                    </tr>
+                `).join('')}</tbody>`;
+        }
+
+        function initAttributionCharts(modelKey) {
+            const m = ATTRIBUTION_MODELS[modelKey];
+            const leadVals = scaleCredit(m.credit.leads, 490);
+            const oppVals = scaleCredit(m.credit.opps, 121);
+            const spendVals = scaleCredit(m.credit.spend, 68);
+            const revVals = scaleCredit(m.credit.revenue, 198);
+            makeRichDonut('attrLeadsDonut', leadVals, ATTR_CHANNELS);
+            makeRichDonut('attrOppsDonut', oppVals, ATTR_CHANNELS);
+            makeRichDonut('attrSpendDonut', spendVals.map(v => v * 1000), ATTR_CHANNELS);
+            makeRichDonut('attrRevDonut', revVals.map(v => v * 1000), ATTR_CHANNELS);
+            if (!charts.attrLeadStack) initAttrStackedBars();
+        }
+
+        function setAttrModel(key) {
+            currentAttrModel = key;
+            const m = ATTRIBUTION_MODELS[key];
+            document.getElementById('attrTitle').textContent = m.title;
+            document.getElementById('attrDesc').textContent = m.desc;
+            renderAttrOverview(m);
+            renderAttrKpis(m);
+            renderAttrTable(key);
+            setTimeout(() => initAttributionCharts(key), 80);
+            document.querySelectorAll('[data-attr]').forEach(el => el.classList.toggle('active', el.dataset.attr === key));
+        }
+
+        const SIDEBARS = {
+            home: `<div class="sf-nav-group"><i class="fa-solid fa-chevron-down text-[10px]"></i> Home</div><div class="sf-nav-item active" data-goto="home">Executive Overview</div>`,
+            analytics: `<div class="sf-nav-group">Overview</div><div class="sf-nav-item active" data-goto="analytics">Performance Overview</div><div class="sf-nav-group mt-2">Channels</div><div class="sf-nav-item">Email Agent</div><div class="sf-nav-item">Adaptive Web</div><div class="sf-nav-item">WhatsApp</div>`,
+            attribution: `
+                <div class="sf-nav-group">External Channels</div>
+                <div class="sf-nav-item">Google Ads</div><div class="sf-nav-item">Meta Ads</div><div class="sf-nav-item">LinkedIn Ads</div>
+                <div class="sf-nav-group mt-2">Attribution</div>
+                <div class="sf-nav-item" data-attr="first-touch">First Touch</div>
+                <div class="sf-nav-item active" data-attr="last-touch">Last Touch</div>
+                <div class="sf-nav-item" data-attr="w-shape">W-Shape</div>
+                <div class="sf-nav-item" data-attr="linear">Linear</div>
+                <div class="sf-nav-item" data-attr="time-decay">Time Decay</div>
+                <div class="sf-nav-group mt-2">Collections</div>
+                <div class="sf-nav-item text-[#0176d3]">Palonia Summer Demo</div>`,
+            data: `<div class="sf-nav-item active">Data Streams</div><div class="sf-nav-item">Connections</div>`
+        };
+
+        function showTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.sf-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            const ids = { home: 'view-home', analytics: 'view-analytics', attribution: 'view-attribution', data: 'view-data' };
+            document.getElementById(ids[tab] || 'view-home').classList.add('active');
+            document.getElementById('sidebarNav').innerHTML = SIDEBARS[tab] || SIDEBARS.home;
+            if (tab === 'home') setTimeout(initHomeCharts, 80);
+            if (tab === 'analytics') setTimeout(initAnalyticsCharts, 80);
+            if (tab === 'attribution') {
+                if (!charts.attrLeadStack) initAttrStackedBars();
+                setAttrModel(currentAttrModel);
+            }
+            bindSidebar();
+            location.hash = tab === 'attribution' ? `attribution-${currentAttrModel}` : tab;
+        }
+
+        function bindSidebar() {
+            document.querySelectorAll('[data-goto]').forEach(el => { el.onclick = () => showTab(el.dataset.goto); });
+            document.querySelectorAll('[data-attr]').forEach(el => {
+                el.onclick = () => { showTab('attribution'); setAttrModel(el.dataset.attr); };
+            });
+        }
+
+        document.getElementById('mainTabs').addEventListener('click', e => {
+            const tab = e.target.closest('.sf-tab');
+            if (tab) showTab(tab.dataset.tab);
+        });
+
+        function bootFromHash() {
+            const h = (location.hash || '#home').replace('#', '');
+            if (h.startsWith('attribution')) {
+                showTab('attribution');
+                const model = h.replace('attribution-', '') || 'last-touch';
+                if (ATTRIBUTION_MODELS[model]) setAttrModel(model);
+                return;
+            }
+            if (['home', 'analytics', 'data', 'attribution'].includes(h)) showTab(h);
+            else showTab('home');
+        }
+
+        window.addEventListener('hashchange', bootFromHash);
+        document.getElementById('sidebarNav').innerHTML = SIDEBARS.home;
+        bindSidebar();
+        bootFromHash();
+        if (!location.hash || location.hash === '#home') setTimeout(initHomeCharts, 100);
+    </script>
+</body>
+</html>

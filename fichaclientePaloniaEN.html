@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="assets/demo-base.js"></script>
+    <title>360 Profile - Palonia Data Cloud</title>
+    <!-- Favicon -->
+    <link rel="icon" href="assets/palonia-icon.png" type="image/x-icon">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    
+    <!-- Babel -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        body { font-family: 'Montserrat', sans-serif; background-color: #f4f6f9; color: #1a222d; margin: 0; padding: 0; overflow: hidden; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        .fade-in { animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* Estilo del Sidebar Oscuro */
+        .sidebar-dark {
+            background: linear-gradient(180deg, #1a222d 0%, #0d1218 100%);
+            color: #ffffff;
+        }
+
+        .separator-line {
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            margin: 16px 0;
+        }
+
+        /* Tabs personalizados */
+        .tab-active { border-bottom: 3px solid #1a222d; color: #1a222d; font-weight: 600; }
+        .tab-inactive { color: #64748b; font-weight: 500; }
+        .tab-inactive:hover { color: #1a222d; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        function DataCloudDashboard() {
+            const [loaded, setLoaded] = useState(false);
+            const [activeBottomTab, setActiveBottomTab] = useState('affinities');
+            const [activeTopTab, setActiveTopTab] = useState('related');
+            const [selectedChat, setSelectedChat] = useState(null);
+
+            // Agentforce sessions — aligned with Email → Adaptive Web → WhatsApp demo flow
+            const chatSessions = [
+                {
+                    id: 1,
+                    date: "Today · 10:24 AM",
+                    channel: "WhatsApp",
+                    title: "Conversion & Booking Confirmed",
+                    summary: "After the web handoff, Agentforce sends the BCL-8472 offer summary on WhatsApp. Sarah thanks and reviews with her husband. Next day, Agentforce nudges with EXTRA10 (-10%) — room still available at €4,462. Sarah completes purchase.",
+                    transcript: [
+                        { role: 'agent', text: "Hi Sarah! ✨ As requested on the web, here is your personalized offer summary (BCL-8472): Connected Family Room, Aug 10–17, All-Inclusive — €4,958 (10PALONIA26 + Large Family discounts applied). Wellness & activities noted as pay-at-hotel." },
+                        { role: 'user', text: "Thank you so much! I'll go through everything with my husband tonight. This is really helpful." },
+                        { role: 'agent', text: "You're very welcome, Sarah! 💙 Take all the time you need — there's no pressure. I'll keep an eye on availability for you." },
+                        { role: 'agent', text: "Good morning Sarah! ☀️ Your Connected Family Room is still available. I've unlocked an extra 10% discount (EXTRA10) — new total €4,462 for 48 hours. 🔗 https://palonia.com/book/BCL-8472" },
+                        { role: 'user', text: "We've discussed it — we're in! I'll complete the booking now with the EXTRA10 discount. Thank you for following up!" },
+                        { role: 'agent', text: "Wonderful news, Sarah! 🎉 Your stay at Palonia Beach Resort is confirmed (ref. BCL-8472). You'll receive the confirmation email shortly." }
+                    ]
+                },
+                {
+                    id: 2,
+                    date: "Today · 4:12 PM",
+                    channel: "Web App",
+                    title: "Adaptive Website Personalization",
+                    summary: "Sarah opens the draft from email (€4,958 room only). Agentforce surfaces wellness and family-activity widgets in real time (Adaptive Website). She adds pay-at-hotel experiences, needs time to consult her husband, and accepts WhatsApp offer delivery.",
+                    transcript: [
+                        { role: 'agent', text: "Hi Sarah! 👋 Welcome to Palonia.com. You have the draft of your stay with Connected Rooms on screen. Do you have any questions before completing your booking?" },
+                        { role: 'user', text: "Does the hotel have any relaxation service that I can enjoy in the mornings before breakfast?" },
+                        { role: 'agent', text: "Yes! EARLY BIRDS SPA, Water Circuit, FAMILY TREAT — I've personalized the page below (Adaptive Website). All payable at the hotel; your room total stays at €4,958." },
+                        { role: 'user', text: "[Action] Added FAMILY TREAT to itinerary (pay at hotel)." },
+                        { role: 'user', text: "What family activities does the resort offer in the afternoons? Something for the teens and our 4-year-old?" },
+                        { role: 'agent', text: "Palonia FUN Lounge (teens 13+), Princess Laboratory, Family Aqua Gym — matched to your profile on screen. Pick one to save to your itinerary." },
+                        { role: 'user', text: "[Action] Added Princess Laboratory to itinerary." },
+                        { role: 'user', text: "I love how everything looks, but I need to think about it and discuss it with my husband before committing." },
+                        { role: 'agent', text: "Of course. Would you like me to send a clear summary of your offer on WhatsApp so you can review together?" },
+                        { role: 'user', text: "Yes, please send the summary to my WhatsApp." },
+                        { role: 'agent', text: "Done! 📱 I've sent your booking summary to WhatsApp. Review at your pace — I'll follow up there tomorrow if anything changes." }
+                    ]
+                },
+                {
+                    id: 3,
+                    date: "Today · 2:36 PM",
+                    channel: "Email Agent",
+                    title: "Qualification & Dynamic Offer (€4,958)",
+                    summary: "Campaign 'Unforgettable Summer'. Sarah describes family of 5 (16, 14, 4). Agentforce qualifies, recommends Palonia Beach Resort, blocks Aug 10–17 with discounts 10PALONIA26 + Large Family. Delivers budget €5,833 → €4,958 and optional Premium / Excursion upsells. CTA: View details on the web.",
+                    transcript: [
+                        { role: 'user', text: "Hi! Finding holidays for us is chaos. We are 5: my husband, me, and three kids (16, 14, and 4). We need Wi-Fi for the teens, entertainment for the little one, gym and healthy options. August in Spain, please." },
+                        { role: 'agent', text: "Hello Sarah! I propose Palonia Beach Resort — FUN Lounge for teens, Kids Club for the 4-year-old. Premium Family Room (connected) fits all 5." },
+                        { role: 'user', text: "We're convinced by the Beach Resort! How do 5 sleep comfortably? What fitness options for adults?" },
+                        { role: 'agent', text: "Premium Family Room — two connected rooms, two bathrooms. Fitness, paddle, Pilates & Yoga. I need dates and board preference." },
+                        { role: 'user', text: "Connected rooms are a relief! All-Inclusive. August 10th to 17th, 7 nights." },
+                        { role: 'agent', text: "Noted! Applied 10PALONIA26 (-10%) and Large Family (-5%). Total stay: ~~€5,833~~ **€4,958**. Optional: Premium All-Inclusive (+€120/day) and Marshlands Excursion (+€280). **View details on the web** to continue." }
+                    ]
+                }
+            ];
+
+            useEffect(() => {
+                setLoaded(true);
+            }, []);
+
+            return (
+                <div className="h-screen flex flex-col bg-[#f4f6f9]">
+                    
+                    {/* GLOBAL TOP NAV */}
+                    <header className="bg-white border-b border-gray-200 h-14 flex items-center justify-between px-4 shrink-0">
+                        <div className="flex items-center gap-6">
+                            <img src="assets/palonia-primary-logo-01.png" alt="Palonia" className="h-14 object-contain" />
+                            
+                            <div className="hidden md:flex bg-gray-100 rounded-md px-3 py-1.5 items-center w-80 border border-gray-200">
+                                <i className="fa-solid fa-magnifying-glass text-gray-400 text-sm mr-2"></i>
+                                <input type="text" placeholder="Search..." className="bg-transparent border-none outline-none text-sm w-full text-gray-700 placeholder-gray-400" />
+                            </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-4 text-gray-500">
+                            <i className="fa-solid fa-star cursor-pointer hover:text-[#c5a059] transition"></i>
+                            <i className="fa-solid fa-plus cursor-pointer hover:text-gray-800 transition text-lg"></i>
+                            <i className="fa-solid fa-circle-question cursor-pointer hover:text-gray-800 transition text-lg"></i>
+                            <i className="fa-solid fa-gear cursor-pointer hover:text-gray-800 transition text-lg"></i>
+                            <div className="relative cursor-pointer hover:text-gray-800 transition">
+                                <i className="fa-solid fa-bell text-lg"></i>
+                                <span className="absolute -top-1 -right-1 bg-red-500 w-2.5 h-2.5 rounded-full border-2 border-white"></span>
+                            </div>
+                            <div className="ml-2 w-8 h-8 rounded-full bg-[#1a222d] flex items-center justify-center text-white text-xs font-bold cursor-pointer">
+                                AG
+                            </div>
+                        </div>
+                    </header>
+
+                    {/* APP SUB-NAV (Data Cloud Menu) */}
+                    <div className="bg-white border-b border-gray-200 h-12 flex items-center px-4 shrink-0 overflow-x-auto text-sm">
+                        <div className="flex items-center gap-2 mr-6 font-bold text-[#1a222d] shrink-0">
+                            <i className="fa-solid fa-braille text-gray-400 mr-1"></i>
+                            Data Cloud
+                        </div>
+                        
+                        <div className="flex h-full gap-6 font-medium text-gray-600 shrink-0 whitespace-nowrap">
+                            <span className="flex items-center border-b-2 border-transparent hover:text-[#1a222d] hover:border-gray-300 cursor-pointer transition-colors px-1">Home</span>
+                            <span className="flex items-center border-b-2 border-transparent hover:text-[#1a222d] hover:border-gray-300 cursor-pointer transition-colors px-1">Palonia Agentforce</span>
+                            <span className="flex items-center gap-1 border-b-2 border-transparent hover:text-[#1a222d] hover:border-gray-300 cursor-pointer transition-colors px-1">Data Streams <i className="fa-solid fa-chevron-down text-[10px] mt-0.5"></i></span>
+                            <span className="flex items-center gap-1 border-b-2 border-transparent hover:text-[#1a222d] hover:border-gray-300 cursor-pointer transition-colors px-1">Data Prep <i className="fa-solid fa-chevron-down text-[10px] mt-0.5"></i></span>
+                            <span className="flex items-center gap-1 border-b-2 border-transparent hover:text-[#1a222d] hover:border-gray-300 cursor-pointer transition-colors px-1">Data Lake Objects <i className="fa-solid fa-chevron-down text-[10px] mt-0.5"></i></span>
+                            <span className="flex items-center gap-1 border-b-2 border-transparent hover:text-[#1a222d] hover:border-gray-300 cursor-pointer transition-colors px-1">Data Model <i className="fa-solid fa-chevron-down text-[10px] mt-0.5"></i></span>
+                            <span className="flex items-center gap-1 border-b-2 border-transparent hover:text-[#1a222d] hover:border-gray-300 cursor-pointer transition-colors px-1">Identity Resolution <i className="fa-solid fa-chevron-down text-[10px] mt-0.5"></i></span>
+                            <span className="flex items-center gap-1 border-b-2 border-transparent hover:text-[#1a222d] hover:border-gray-300 cursor-pointer transition-colors px-1">Segments <i className="fa-solid fa-chevron-down text-[10px] mt-0.5"></i></span>
+                            
+                            {/* Active Tab */}
+                            <span className="flex items-center gap-1.5 border-b-2 border-[#1a222d] text-[#1a222d] font-bold cursor-default px-1">
+                                <i className="fa-regular fa-user text-[#c5a059]"></i>
+                                Sarah Mitchell
+                                <i className="fa-solid fa-xmark text-gray-400 hover:text-red-500 cursor-pointer text-xs ml-1"></i>
+                            </span>
+                        </div>
+                    </div>
+
+                    {/* DASHBOARD GRID */}
+                    <div className={`flex-1 flex overflow-hidden p-4 gap-4 ${loaded ? 'fade-in' : 'opacity-0'}`}>
+                        
+                        {/* COLUMN 1: DARK PROFILE SIDEBAR (Left) */}
+                        <div className="w-1/5 sidebar-dark rounded-xl shadow-lg flex flex-col shrink-0 overflow-y-auto">
+                            <div className="p-6">
+                                {/* Photo & Name */}
+                                <div className="flex items-center gap-4 mb-6">
+                                    <div className="w-16 h-16 rounded-full bg-[#c5a059] p-0.5 shrink-0">
+                                        <div className="w-full h-full rounded-full overflow-hidden border-2 border-[#1a222d]">
+                                            <img src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&q=80" alt="Sarah" className="w-full h-full object-cover"/>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <h2 className="font-bold text-xl leading-tight">Sarah Mitchell</h2>
+                                        <p className="text-sm text-gray-400">Madrid, Spain</p>
+                                    </div>
+                                </div>
+
+                                {/* Identity Info */}
+                                <div className="space-y-3 text-[13px] text-gray-300">
+                                    <div className="flex items-center gap-3">
+                                        <i className="fa-regular fa-id-card w-4 text-center"></i>
+                                        <span>Customer ID <strong>BHG-98234M</strong></span>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <i className="fa-regular fa-envelope w-4 text-center"></i>
+                                        <span className="truncate">sarah.mitchell@gmail.com</span>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <i className="fa-brands fa-whatsapp w-4 text-center text-[#25D366]"></i>
+                                        <span>+34 600 123 456 (Opt-in)</span>
+                                    </div>
+                                </div>
+
+                                <div className="separator-line"></div>
+
+                                {/* Loyalty Program */}
+                                <div className="mb-2">
+                                    <div className="flex gap-3 text-[13px] mb-3">
+                                        <i className="fa-solid fa-gem w-4 text-center text-[#c5a059] mt-0.5"></i>
+                                        <div className="text-gray-400">my Palonia Benefits</div>
+                                    </div>
+                                    <div className="px-2 flex flex-col items-center">
+                                        <img 
+                                            src="assets/Palonia_Loyalty_Card.png" 
+                                            alt="my Palonia Gold Card" 
+                                            className="w-[20%] h-auto rounded shadow-lg border border-white/10 mb-2 transform hover:scale-105 transition duration-300"
+                                        />
+                                        <div className="flex justify-between items-center text-[12px] mt-2 w-full px-2">
+                                            <span className="text-gray-400">Current Tier:</span>
+                                            <span className="font-bold text-white tracking-wide">GOLD</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="separator-line"></div>
+
+                                {/* Category Affinity */}
+                                <div className="flex gap-3 text-[13px] mb-2">
+                                    <i className="fa-solid fa-arrow-down-up-across-line w-4 text-center text-[#c5a059] mt-0.5"></i>
+                                    <div>
+                                        <div className="text-gray-400 mb-1">Category Affinity</div>
+                                        <div className="font-semibold text-white">Active Family, Wellness, Relaxation</div>
+                                    </div>
+                                </div>
+
+                                <div className="separator-line"></div>
+
+                                {/* Segment */}
+                                <div className="flex gap-3 text-[13px] mb-2">
+                                    <i className="fa-solid fa-chart-pie w-4 text-center text-[#c5a059] mt-0.5"></i>
+                                    <div>
+                                        <div className="text-gray-400 mb-1">Segment</div>
+                                        <div className="font-semibold text-white">Large Family (High LTV)</div>
+                                    </div>
+                                </div>
+
+                                <div className="separator-line"></div>
+
+                                {/* Lifetime Value */}
+                                <div className="flex gap-3 text-[13px] mb-2">
+                                    <i className="fa-solid fa-cart-shopping w-4 text-center text-[#c5a059] mt-0.5"></i>
+                                    <div>
+                                        <div className="text-gray-400 mb-1">Lifetime Value</div>
+                                        <div className="font-bold text-lg text-white">€4,462.00</div>
+                                        <div className="text-[11px] text-gray-400">(Average €1,850)</div>
+                                    </div>
+                                </div>
+
+                                <div className="separator-line"></div>
+
+                                {/* Propensity to Purchase */}
+                                <div className="flex gap-3 text-[13px] mb-4">
+                                    <i className="fa-solid fa-cart-arrow-down w-4 text-center text-[#c5a059] mt-0.5"></i>
+                                    <div className="w-full">
+                                        <div className="text-gray-400 mb-1">Propensity to Purchase: <strong className="text-white">Very High</strong></div>
+                                        <div className="w-full bg-gray-700 h-1.5 rounded-full mt-3 relative">
+                                            <div className="absolute top-1/2 -translate-y-1/2 left-[92%] w-3 h-3 bg-white rounded-full shadow-[0_0_5px_rgba(255,255,255,0.8)]"></div>
+                                            <div className="h-full bg-white rounded-full" style={{width: '92%'}}></div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="separator-line"></div>
+
+                                {/* Engagement Score (Gauge) */}
+                                <div className="flex gap-3 text-[13px] mb-2">
+                                    <i className="fa-solid fa-user-check w-4 text-center text-[#c5a059] mt-1"></i>
+                                    <div className="w-full">
+                                        <div className="text-gray-400 mb-3">Engagement Score <strong className="text-white text-base ml-1">92%</strong></div>
+                                        
+                                        <div className="flex items-end gap-3">
+                                            <div className="relative w-28 h-14 shrink-0">
+                                                <svg viewBox="0 0 100 50" className="w-full h-full overflow-visible">
+                                                    {/* Fondo del medidor */}
+                                                    <path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="10" strokeLinecap="round" />
+                                                    {/* Barra de progreso dorada (92%) */}
+                                                    <path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="#c5a059" strokeWidth="10" strokeLinecap="round" strokeDasharray="125.6" strokeDashoffset="10" />
+                                                    {/* Aguja indicadora */}
+                                                    <g style={{transform: 'rotate(70deg)', transformOrigin: '50px 50px'}}>
+                                                        <polygon points="48,50 52,50 50,12" fill="#ffffff" />
+                                                        <circle cx="50" cy="50" r="4" fill="#ffffff" />
+                                                    </g>
+                                                </svg>
+                                            </div>
+                                            <div className="pb-1">
+                                                <div className="font-bold text-white leading-tight mb-1">Highly Engaged</div>
+                                                <div className="text-[10px] text-gray-400 leading-tight">Compared to 15K<br/>similar audience</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+                            
+                            {/* Footer Icons (Sidebar) */}
+                            <div className="mt-auto p-6 flex gap-4 text-gray-400 text-lg border-t border-white/10">
+                                <span className="text-xs mr-2 font-medium self-center">Profile Data:</span>
+                                <i className="fa-solid fa-cart-shopping hover:text-white cursor-pointer transition"></i>
+                                <i className="fa-regular fa-snowflake hover:text-white cursor-pointer transition"></i>
+                                <i className="fa-regular fa-heart hover:text-white cursor-pointer transition"></i>
+                                <div className="w-5 h-5 rounded-full bg-gray-400 text-[#1a222d] flex items-center justify-center text-[10px] font-black hover:bg-white cursor-pointer transition">
+                                    M
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* COLUMN 2: MAIN CONTENT (Center) */}
+                        <div className="w-3/5 flex flex-col gap-4 overflow-y-auto pr-2">
+                            
+                            {/* TOP CARD: Booked Experiences / Reservas / Live Chat */}
+                            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col min-h-[300px] shrink-0">
+                                <div className="flex border-b border-gray-200 px-2 pt-2 shrink-0">
+                                    <button 
+                                        onClick={() => { setActiveTopTab('related'); setSelectedChat(null); }} 
+                                        className={`px-4 py-3 text-sm transition-colors ${activeTopTab === 'related' ? 'tab-active' : 'tab-inactive'}`}>
+                                        Related
+                                    </button>
+                                    <button 
+                                        onClick={() => { setActiveTopTab('details'); setSelectedChat(null); }}
+                                        className={`px-4 py-3 text-sm transition-colors ${activeTopTab === 'details' ? 'tab-active' : 'tab-inactive'}`}>
+                                        Details
+                                    </button>
+                                    <button className="px-4 py-3 tab-inactive text-sm">Cases</button>
+                                    <button 
+                                        onClick={() => setActiveTopTab('live_chat')} 
+                                        className={`px-4 py-3 text-sm transition-colors ${activeTopTab === 'live_chat' ? 'tab-active' : 'tab-inactive'}`}>
+                                        Agentforce Sessions
+                                    </button>
+                                </div>
+                                
+                                {/* CONTENIDO: RELATED (Booked Experiences) */}
+                                {activeTopTab === 'related' && (
+                                    <div className="p-5 flex-1 flex flex-col fade-in">
+                                        <h3 className="font-bold text-[#1a222d] mb-4">Booked Experiences & Stays</h3>
+                                        
+                                        <div className="border border-gray-200 rounded-lg overflow-hidden flex-1">
+                                            <table className="w-full text-left text-sm">
+                                                <thead className="bg-gray-50 border-b border-gray-200 text-gray-600 font-semibold">
+                                                    <tr>
+                                                        <th className="p-3">Experience Name</th>
+                                                        <th className="p-3 hidden lg:table-cell">Description</th>
+                                                        <th className="p-3 text-center">People</th>
+                                                        <th className="p-3 text-right">Date</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-gray-100 text-gray-700">
+                                                    <tr className="hover:bg-gray-50 transition">
+                                                        <td className="p-3 font-medium text-[#1a222d]">
+                                                            Premium Family Room (Connected) · BCL-8472
+                                                        </td>
+                                                        <td className="p-3 hidden lg:table-cell text-xs">Confirmed via WhatsApp with EXTRA10 — All-Inclusive, Aug 10–17.</td>
+                                                        <td className="p-3 text-center">5</td>
+                                                        <td className="p-3 text-right text-gray-500 whitespace-nowrap">Aug 10, 2024</td>
+                                                    </tr>
+                                                    <tr className="hover:bg-gray-50 transition">
+                                                        <td className="p-3 font-medium text-[#1a222d]">Family Treat · Wellness</td>
+                                                        <td className="p-3 hidden lg:table-cell text-xs">Added on Adaptive Web — pay at hotel.</td>
+                                                        <td className="p-3 text-center">4 (+1)</td>
+                                                        <td className="p-3 text-right text-gray-500 whitespace-nowrap">Aug 11, 2024</td>
+                                                    </tr>
+                                                    <tr className="hover:bg-gray-50 transition">
+                                                        <td className="p-3 font-medium text-[#1a222d]">Princess Laboratory</td>
+                                                        <td className="p-3 hidden lg:table-cell text-xs">Afternoon activity for 4-year-old — pay at hotel.</td>
+                                                        <td className="p-3 text-center">1</td>
+                                                        <td className="p-3 text-right text-gray-500 whitespace-nowrap">TBD</td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <div className="text-center mt-3">
+                                            <a href="#" className="text-sm font-semibold text-blue-600 hover:text-blue-800">View All</a>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* CONTENIDO: DETAILS (Contact & Household) */}
+                                {activeTopTab === 'details' && (
+                                    <div className="p-5 flex-1 flex flex-col fade-in overflow-y-auto bg-gray-50/50">
+                                        <h3 className="font-bold text-[#1a222d] mb-4">Customer Details & Relationships</h3>
+                                        
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                            {/* Contact Info Card */}
+                                            <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col">
+                                                <h4 className="font-bold text-[#1a222d] text-[14px] mb-4 flex items-center gap-2 pb-2 border-b border-gray-100">
+                                                    <i className="fa-solid fa-address-book text-[#c5a059]"></i> Contact Information
+                                                </h4>
+                                                <div className="space-y-4 text-[13px] flex-1">
+                                                    <div className="flex justify-between">
+                                                        <span className="text-gray-500">Full Name</span>
+                                                        <span className="font-medium text-[#1a222d]">Sarah Mitchell</span>
+                                                    </div>
+                                                    <div className="flex justify-between">
+                                                        <span className="text-gray-500">Email Address</span>
+                                                        <span className="font-medium text-[#1a222d]">sarah.mitchell@gmail.com</span>
+                                                    </div>
+                                                    <div className="flex justify-between items-center">
+                                                        <span className="text-gray-500">Mobile Phone</span>
+                                                        <div className="text-right">
+                                                            <span className="font-medium text-[#1a222d] block">+34 600 123 456</span>
+                                                            <span className="text-[10px] text-green-600 font-bold bg-green-50 px-1.5 py-0.5 rounded uppercase tracking-wider">WhatsApp Opt-in</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex justify-between">
+                                                        <span className="text-gray-500">Mailing Address</span>
+                                                        <span className="font-medium text-[#1a222d] text-right">45 Velázquez St, 3rd Right<br/>28001 Madrid, Spain</span>
+                                                    </div>
+                                                    <div className="flex justify-between">
+                                                        <span className="text-gray-500">Preferred Language</span>
+                                                        <span className="font-medium text-[#1a222d]">English (Primary) / Spanish</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Household Members Card */}
+                                            <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col">
+                                                <div className="flex justify-between items-center mb-4 pb-2 border-b border-gray-100">
+                                                    <h4 className="font-bold text-[#1a222d] text-[14px] flex items-center gap-2">
+                                                        <i className="fa-solid fa-house-chimney-user text-[#c5a059]"></i> Household Members
+                                                    </h4>
+                                                    <span className="bg-gray-100 text-gray-600 text-[10px] font-bold px-2 py-0.5 rounded-full">5 Members</span>
+                                                </div>
+                                                <div className="space-y-3 flex-1">
+                                                    <div className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg transition border border-transparent hover:border-gray-100 bg-gray-50/50">
+                                                        <div className="w-9 h-9 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold shrink-0">SM</div>
+                                                        <div className="flex-1">
+                                                            <p className="text-[13px] font-bold text-[#1a222d]">Sarah Mitchell</p>
+                                                            <p className="text-[11px] text-gray-500">Primary</p>
+                                                        </div>
+                                                        <i className="fa-solid fa-star text-[#c5a059] text-xs" title="Primary Contact"></i>
+                                                    </div>
+                                                    <div className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg transition border border-transparent hover:border-gray-100">
+                                                        <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold shrink-0">DM</div>
+                                                        <div className="flex-1">
+                                                            <p className="text-[13px] font-bold text-[#1a222d]">David Mitchell</p>
+                                                            <p className="text-[11px] text-gray-500">Spouse / Adult</p>
+                                                        </div>
+                                                        <i className="fa-solid fa-link text-gray-300 text-xs"></i>
+                                                    </div>
+                                                    <div className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg transition border border-transparent hover:border-gray-100">
+                                                        <div className="w-9 h-9 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold shrink-0">JM</div>
+                                                        <div className="flex-1">
+                                                            <p className="text-[13px] font-bold text-[#1a222d]">James Mitchell</p>
+                                                            <p className="text-[11px] text-gray-500">Child (16 years)</p>
+                                                        </div>
+                                                        <i className="fa-solid fa-link text-gray-300 text-xs"></i>
+                                                    </div>
+                                                    <div className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg transition border border-transparent hover:border-gray-100">
+                                                        <div className="w-9 h-9 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center text-xs font-bold shrink-0">EM</div>
+                                                        <div className="flex-1">
+                                                            <p className="text-[13px] font-bold text-[#1a222d]">Emma Mitchell</p>
+                                                            <p className="text-[11px] text-gray-500">Child (14 years)</p>
+                                                        </div>
+                                                        <i className="fa-solid fa-link text-gray-300 text-xs"></i>
+                                                    </div>
+                                                    <div className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg transition border border-transparent hover:border-gray-100">
+                                                        <div className="w-9 h-9 rounded-full bg-pink-100 text-pink-700 flex items-center justify-center text-xs font-bold shrink-0">LM</div>
+                                                        <div className="flex-1">
+                                                            <p className="text-[13px] font-bold text-[#1a222d]">Lily Mitchell</p>
+                                                            <p className="text-[11px] text-gray-500">Child (4 years)</p>
+                                                        </div>
+                                                        <i className="fa-solid fa-link text-gray-300 text-xs"></i>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* CONTENIDO: LIVE CHAT LOGS (Listado de sesiones) */}
+                                {activeTopTab === 'live_chat' && !selectedChat && (
+                                    <div className="p-5 flex-1 flex flex-col fade-in">
+                                        <div className="flex justify-between items-center mb-4">
+                                            <h3 className="font-bold text-[#1a222d] flex items-center gap-2">
+                                                <i className="fa-regular fa-comments text-gray-400"></i> Agentforce Session Logs
+                                            </h3>
+                                            <span className="text-xs text-gray-500 font-medium bg-gray-100 px-2.5 py-1 rounded-full border border-gray-200">{chatSessions.length} Sessions</span>
+                                        </div>
+                                        
+                                        <div className="space-y-4 overflow-y-auto flex-1 pr-2">
+                                            {chatSessions.map((session) => (
+                                                <div key={session.id} className="border border-gray-200 rounded-lg p-4 hover:border-[#c5a059] hover:shadow-sm transition bg-white flex flex-col gap-3">
+                                                    <div className="flex justify-between items-start">
+                                                        <div>
+                                                            <div className="flex items-center gap-2 mb-1">
+                                                                <span className="text-sm font-bold text-[#1a222d]">{session.title}</span>
+                                                                <span className="inline-flex items-center gap-1 bg-gray-50 border border-gray-200 text-gray-600 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">
+                                                                    {session.channel === 'WhatsApp' ? <i className="fa-brands fa-whatsapp text-[#25D366]"></i> : 
+                                                                     session.channel === 'Web App' ? <i className="fa-solid fa-globe text-blue-500"></i> : 
+                                                                     <i className="fa-regular fa-envelope text-gray-500"></i>} {session.channel}
+                                                                </span>
+                                                            </div>
+                                                            <span className="text-[11px] text-gray-400"><i className="fa-regular fa-clock mr-1"></i> {session.date}</span>
+                                                        </div>
+                                                        <button 
+                                                            onClick={() => setSelectedChat(session)}
+                                                            className="text-xs font-bold text-[#c5a059] bg-[#fdfaf5] border border-[#eaddca] px-3 py-1.5 rounded hover:bg-[#c5a059] hover:text-white transition shadow-sm">
+                                                            View Transcript
+                                                        </button>
+                                                    </div>
+                                                    <p className="text-[12px] text-gray-600 leading-relaxed bg-gray-50 p-3 rounded border border-gray-100">
+                                                        <strong className="text-gray-700 font-medium">AI Summary:</strong> {session.summary}
+                                                    </p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* CONTENIDO: LIVE CHAT TRANSCRIPT (Detalle de la sesión) */}
+                                {activeTopTab === 'live_chat' && selectedChat && (
+                                    <div className="flex-1 flex flex-col fade-in overflow-hidden h-full">
+                                        <div className="px-5 py-3 border-b border-gray-200 flex items-center justify-between bg-gray-50 shrink-0">
+                                            <div className="flex items-center gap-4">
+                                                <button 
+                                                    onClick={() => setSelectedChat(null)}
+                                                    className="w-8 h-8 rounded-full bg-white border border-gray-300 flex items-center justify-center hover:bg-gray-200 transition text-gray-600 shadow-sm">
+                                                    <i className="fa-solid fa-arrow-left text-xs"></i>
+                                                </button>
+                                                <div>
+                                                    <h4 className="font-bold text-[#1a222d] text-sm leading-tight">{selectedChat.title}</h4>
+                                                    <span className="text-[10px] text-gray-500 font-medium">{selectedChat.date} • {selectedChat.channel}</span>
+                                                </div>
+                                            </div>
+                                            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5 bg-white px-2 py-1 rounded border border-gray-200">
+                                                <i className="fa-solid fa-file-lines"></i> Original Transcript
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="p-5 flex-1 overflow-y-auto bg-white space-y-4">
+                                            {selectedChat.transcript.map((msg, idx) => (
+                                                <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                                    {msg.role === 'agent' && (
+                                                        <div className="w-6 h-6 rounded-full bg-white border border-[#c5a059] flex items-center justify-center shrink-0 mr-2 mt-1 shadow-sm p-1">
+                                                            <img src="assets/agentforce_icon.webp" alt="Agentforce" className="w-full h-full object-contain" />
+                                                        </div>
+                                                    )}
+                                                    
+                                                    <div className={`max-w-[85%] px-3.5 py-2.5 text-[12px] leading-relaxed shadow-sm ${
+                                                        msg.role === 'user' 
+                                                            ? 'bg-[#f4f6f9] text-[#1a222d] border border-gray-200 rounded-2xl rounded-tr-sm font-medium' 
+                                                            : 'bg-[#fdfaf5] border border-[#eaddca] text-[#202124] rounded-2xl rounded-tl-sm'
+                                                    }`}>
+                                                        {msg.text}
+                                                    </div>
+
+                                                    {msg.role === 'user' && (
+                                                        <div className="w-6 h-6 rounded-full bg-[#1a222d] text-white flex items-center justify-center shrink-0 ml-2 mt-1 font-bold text-[10px] shadow-sm">
+                                                            S
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* BOTTOM CARD: Customer Affinities / Insights */}
+                            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col shrink-0">
+                                <div className="flex border-b border-gray-200 px-2 pt-2">
+                                    <button 
+                                        onClick={() => setActiveBottomTab('affinities')} 
+                                        className={`px-4 py-3 text-sm transition-colors ${activeBottomTab === 'affinities' ? 'tab-active' : 'tab-inactive'}`}>
+                                        Customer Affinities
+                                    </button>
+                                    <button 
+                                        onClick={() => setActiveBottomTab('insights')} 
+                                        className={`px-4 py-3 text-sm transition-colors ${activeBottomTab === 'insights' ? 'tab-active' : 'tab-inactive'}`}>
+                                        Insights
+                                    </button>
+                                    <button className="px-4 py-3 tab-inactive text-sm">Details</button>
+                                </div>
+                                
+                                {/* CONTENIDO: AFFINITIES (Tab 1) */}
+                                {activeBottomTab === 'affinities' && (
+                                    <div className="p-5 flex-1 fade-in">
+                                        <div className="flex items-center gap-4 mb-6 text-sm text-gray-600">
+                                            <span>Showing Top in:</span>
+                                            <select className="border border-gray-300 rounded-md px-3 py-1.5 outline-none focus:border-[#1a222d] bg-white">
+                                                <option>Category</option>
+                                            </select>
+                                            <span className="ml-2">By:</span>
+                                            <select className="border border-gray-300 rounded-md px-3 py-1.5 outline-none focus:border-[#1a222d] bg-white">
+                                                <option>Zero-Party Data Interactions</option>
+                                            </select>
+                                        </div>
+
+                                        {/* Bar Charts */}
+                                        <div className="space-y-5 max-w-2xl">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-[170px] shrink-0 text-right font-medium text-[#1a222d] text-sm">Kids & Teens Entertainment</div>
+                                                <div className="flex-1 bg-gray-100 h-6 rounded-sm overflow-hidden flex">
+                                                    <div className="bg-[#3b82f6] h-full flex items-center justify-end px-3 text-white text-xs font-bold" style={{width: '85%'}}>85</div>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-[170px] shrink-0 text-right font-medium text-[#1a222d] text-sm">High-Speed Wi-Fi</div>
+                                                <div className="flex-1 bg-gray-100 h-6 rounded-sm overflow-hidden flex">
+                                                    <div className="bg-[#3b82f6] h-full flex items-center justify-end px-3 text-white text-xs font-bold" style={{width: '72%'}}>72</div>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-[170px] shrink-0 text-right font-medium text-[#1a222d] text-sm">Sports / Active Life</div>
+                                                <div className="flex-1 bg-gray-100 h-6 rounded-sm overflow-hidden flex">
+                                                    <div className="bg-[#3b82f6] h-full flex items-center justify-end px-3 text-white text-xs font-bold" style={{width: '65%'}}>65</div>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-[170px] shrink-0 text-right font-medium text-[#1a222d] text-sm">Relaxation & Disconnection</div>
+                                                <div className="flex-1 bg-gray-100 h-6 rounded-sm overflow-hidden flex">
+                                                    <div className="bg-[#3b82f6] h-full flex items-center justify-end px-3 text-white text-xs font-bold" style={{width: '58%'}}>58</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <p className="text-xs text-gray-400 mt-6 italic"><i className="fa-solid fa-sparkles text-[#c5a059] mr-1"></i> Data automatically extracted from the user's conversational interactions.</p>
+                                    </div>
+                                )}
+
+                                {/* CONTENIDO: INSIGHTS (Tab 2) */}
+                                {activeBottomTab === 'insights' && (
+                                    <div className="p-5 flex-1 fade-in overflow-y-auto">
+                                        <div className="flex items-center gap-2 mb-4">
+                                            <img src="assets/agentforce_icon.webp" alt="Agentforce" className="w-4 h-4 object-contain" />
+                                            <h3 className="font-bold text-[#1a222d] text-sm uppercase tracking-wide">Agentforce Actionable Insights</h3>
+                                        </div>
+                                        
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-3xl">
+                                            
+                                            {/* Insight 1: Next Best Action */}
+                                            <div className="bg-[#fdfaf5] border border-[#eaddca] rounded-lg p-4 shadow-sm relative overflow-hidden flex flex-col justify-between">
+                                                <div className="absolute top-0 right-0 w-16 h-16 bg-[#c5a059] opacity-5 rounded-bl-full"></div>
+                                                <div>
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <i className="fa-solid fa-bullseye text-[#c5a059]"></i>
+                                                        <h4 className="font-bold text-[#1a222d] text-[13px]">Next-Best-Action (Cross-Sell)</h4>
+                                                    </div>
+                                                    <p className="text-xs text-gray-600 leading-relaxed">
+                                                        Offer treatments at the <strong>U-Spa (couples massage)</strong> during the mornings, taking advantage of the time window when the girl will be at the Kids Club and the teens in sports activities.
+                                                    </p>
+                                                </div>
+                                                <button className="mt-4 text-[10px] w-fit bg-white border border-[#c5a059] text-[#c5a059] px-3 py-1.5 rounded font-bold hover:bg-[#c5a059] hover:text-white transition shadow-sm">LAUNCH CAMPAIGN</button>
+                                            </div>
+
+                                            {/* Insight 2: Comportamiento de Compra */}
+                                            <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <i className="fa-solid fa-cart-shopping text-blue-500"></i>
+                                                    <h4 className="font-bold text-[#1a222d] text-[13px]">Purchasing Behavior</h4>
+                                                </div>
+                                                    <p className="text-xs text-gray-600 leading-relaxed">
+                                                        Converted after <strong>Adaptive Website</strong> personalization and husband review on WhatsApp. Responded to <strong>EXTRA10</strong> urgency within 48h — values convenience, family-fit experiences, and pay-at-hotel flexibility.
+                                                    </p>
+                                            </div>
+
+                                            {/* Insight 3: Canal Preferido */}
+                                            <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <i className="fa-brands fa-whatsapp text-[#25D366]"></i>
+                                                    <h4 className="font-bold text-[#1a222d] text-[13px]">Channel Affinity</h4>
+                                                </div>
+                                                <p className="text-xs text-gray-600 leading-relaxed">
+                                                    Immediate response rate on WhatsApp. It is strongly recommended to prioritize this channel for pre-stay notifications (Web Check-in) and concierge messages during their holidays.
+                                                </p>
+                                            </div>
+
+                                            {/* Insight 4: Afinidad Experiencias */}
+                                            <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <i className="fa-solid fa-ticket text-[#c5a059]"></i>
+                                                    <h4 className="font-bold text-[#1a222d] text-[13px]">Affinity for Group Experiences</h4>
+                                                </div>
+                                                <p className="text-xs text-gray-600 leading-relaxed">
+                                                    High willingness to participate in activities that integrate all three generations (grandparents, parents, and children). It is proactively recommended to offer bookings for <strong>evening shows</strong>, cultural excursions, or family dining experiences.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                        </div>
+
+                        {/* COLUMN 3: OMNICHANNEL JOURNEY (Right) */}
+                        <div className="w-1/5 bg-white rounded-xl shadow-sm border border-gray-200 shrink-0 flex flex-col overflow-hidden">
+                            <div className="p-5 border-b border-gray-100 flex items-center gap-2">
+                                <i className="fa-solid fa-route text-gray-400 text-lg"></i>
+                                <h2 className="font-bold text-lg text-[#1a222d]">Omnichannel Journey</h2>
+                            </div>
+                            
+                            <div className="flex-1 overflow-y-auto p-5">
+                                <div className="relative border-l-2 border-gray-100 ml-4 mt-2 pb-4 space-y-8">
+                                    
+                                    {/* 1 — Booking confirmed (highlight) */}
+                                    <div className="relative pl-6">
+                                        <div className="absolute -left-[17px] top-2 w-8 h-8 bg-white border border-[#c5a059] rounded-full flex items-center justify-center z-10 overflow-hidden shadow-sm p-1">
+                                            <img src="assets/agentforce_icon.webp" alt="Agentforce" className="w-full h-full object-contain" />
+                                        </div>
+                                        <div className="bg-white border border-[#c5a059] rounded-xl p-4 shadow-sm">
+                                            <div className="flex justify-between items-start mb-1.5">
+                                                <span className="text-[10px] font-bold text-[#c5a059] uppercase tracking-wide">Palonia Agentforce</span>
+                                                <span className="text-[10px] text-gray-400">Today</span>
+                                            </div>
+                                            <h4 className="font-bold text-[#1a222d] text-[14px] mb-1.5">Booking Confirmed · EXTRA10</h4>
+                                            <p className="text-[12px] text-gray-600 mb-3 leading-relaxed">After husband review on WhatsApp, Sarah completes checkout at <strong>€4,462</strong> (BCL-8472). Agentforce closed the loop without human handoff.</p>
+                                            <div className="inline-flex items-center gap-1.5 bg-gray-50 border border-gray-200 text-gray-600 text-[10px] font-medium px-2.5 py-1 rounded">
+                                                <i className="fa-brands fa-whatsapp text-[#25D366]"></i> WhatsApp
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* 2 — WA follow-up */}
+                                    <div className="relative pl-6">
+                                        <div className="absolute -left-[17px] top-0 w-8 h-8 bg-white border border-[#25D366] rounded-full flex items-center justify-center z-10">
+                                            <i className="fa-brands fa-whatsapp text-[#25D366] text-[15px]"></i>
+                                        </div>
+                                        <div>
+                                            <div className="flex justify-between items-start mb-0.5">
+                                                <h4 className="font-bold text-[#1a222d] text-[14px]">Offer Summary & EXTRA10</h4>
+                                                <span className="text-[10px] text-gray-400 mt-0.5">Today / Tomorrow</span>
+                                            </div>
+                                            <p className="text-[12px] text-gray-600 leading-relaxed">Summary card sent after web consent. Sarah thanks; next-day nudge with 48h discount and booking link.</p>
+                                        </div>
+                                    </div>
+
+                                    {/* 3 — Adaptive Web */}
+                                    <div className="relative pl-6">
+                                        <div className="absolute -left-[17px] top-0 w-8 h-8 bg-white border border-[#3b82f6] rounded-full flex items-center justify-center z-10">
+                                            <i className="fa-solid fa-globe text-[#3b82f6] text-[13px]"></i>
+                                        </div>
+                                        <div>
+                                            <div className="flex justify-between items-start mb-0.5">
+                                                <h4 className="font-bold text-[#1a222d] text-[14px]">Adaptive Website</h4>
+                                                <span className="text-[10px] text-gray-400 mt-0.5">Today · 4:12 PM</span>
+                                            </div>
+                                            <p className="text-[12px] text-gray-600 mb-2 leading-relaxed">Real-time wellness & activity widgets. Pay-at-hotel itinerary. Consults husband → opts in to WhatsApp summary.</p>
+                                            <div className="inline-flex items-center gap-1.5 bg-gray-50 border border-gray-200 text-gray-600 text-[10px] font-medium px-2.5 py-1 rounded">
+                                                <i className="fa-solid fa-wand-magic-sparkles text-[#c5a059]"></i> Web · Personalization
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* 4 — Email offer */}
+                                    <div className="relative pl-6">
+                                        <div className="absolute -left-[17px] top-0 w-8 h-8 bg-white border border-[#c5a059] rounded-full flex items-center justify-center z-10 overflow-hidden shadow-sm p-1">
+                                            <img src="assets/agentforce_icon.webp" alt="Agentforce" className="w-full h-full object-contain" />
+                                        </div>
+                                        <div>
+                                            <div className="flex justify-between items-start mb-0.5">
+                                                <h4 className="font-bold text-[#1a222d] text-[14px]">Dynamic Offer · €4,958</h4>
+                                                <span className="text-[10px] text-gray-400 mt-0.5">Today · 2:36 PM</span>
+                                            </div>
+                                            <p className="text-[12px] text-gray-600 mb-2 leading-relaxed">Qualifies family of 5, applies 10PALONIA26 + Large Family. Blocks Aug 10–17. Upsells Premium & Excursion. CTA to web.</p>
+                                            <div className="inline-flex items-center gap-1.5 bg-gray-50 border border-gray-200 text-gray-600 text-[10px] font-medium px-2.5 py-1 rounded">
+                                                <i className="fa-regular fa-envelope"></i> Email Agent
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* 5 — Campaign entry */}
+                                    <div className="relative pl-6">
+                                        <div className="absolute -left-[17px] top-0 w-8 h-8 bg-white border border-gray-300 rounded-full flex items-center justify-center z-10">
+                                            <i className="fa-regular fa-envelope text-gray-400 text-[13px]"></i>
+                                        </div>
+                                        <div>
+                                            <div className="flex justify-between items-start mb-0.5">
+                                                <h4 className="font-bold text-[#1a222d] text-[14px]">Campaign · Family Special</h4>
+                                                <span className="text-[10px] text-gray-400 mt-0.5">2 weeks ago</span>
+                                            </div>
+                                            <p className="text-[12px] text-gray-600 leading-relaxed">Sarah opens 'Unforgettable Summer' and replies with complex family requirements.</p>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<DataCloudDashboard />);
+    </script>
+</body>
+</html>

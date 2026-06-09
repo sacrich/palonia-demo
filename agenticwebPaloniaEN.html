@@ -1,0 +1,1201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="assets/demo-base.js"></script>
+    <title>Booking Summary - Palonia Hotel Group</title>
+    <!-- Favicon -->
+    <link rel="icon" href="assets/palonia-icon.png" type="image/x-icon">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    
+    <!-- Babel -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        body { font-family: 'Montserrat', sans-serif; background-color: #f8f9fa; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+        
+        .fade-in { animation: fadeIn 0.4s ease-in-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .chat-textarea {
+            resize: none;
+            min-height: 44px;
+            max-height: 150px;
+            line-height: 1.5;
+            transition: height 0.1s ease;
+        }
+        
+        .booking-link { color: #005c8a; text-decoration: none; transition: all 0.2s; }
+        .booking-link:hover { text-decoration: underline; }
+
+        @keyframes pulseGlow {
+            0%, 100% { opacity: 0.45; }
+            50% { opacity: 1; }
+        }
+        .thinking-shimmer {
+            background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 37%, #f1f5f9 63%);
+            background-size: 400% 100%;
+            animation: shimmer 1.15s ease-in-out infinite;
+        }
+        @keyframes shimmer {
+            0% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        .activity-top-rated {
+            border: 3px solid #c5a059 !important;
+            box-shadow: 0 0 0 6px rgba(197, 160, 89, 0.45), 0 16px 36px rgba(26, 34, 45, 0.18);
+            transform: translateY(-4px) scale(1.02);
+            z-index: 2;
+        }
+        @keyframes topRatedPulse {
+            0%, 100% { box-shadow: 0 0 0 6px rgba(197, 160, 89, 0.4), 0 16px 36px rgba(26, 34, 45, 0.18); }
+            50% { box-shadow: 0 0 0 10px rgba(197, 160, 89, 0.55), 0 20px 40px rgba(26, 34, 45, 0.22); }
+        }
+        .activity-top-rated { animation: topRatedPulse 1.6s ease-in-out infinite; }
+        .activity-top-rated .btn-add-highlighted {
+            background: #c5a059 !important;
+            color: #1a222d !important;
+            border-color: #c5a059 !important;
+            animation: topRatedPulse 1.6s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        const PALONIA_DARK = "#1a222d";
+        const PALONIA_GOLD = "#c5a059";
+        const RESORT_IMG = "assets/hotel_1.png";
+        const AGENT_ICON = "assets/palonia-icon.png";
+
+        // Matches email offer (agenticEmailPaloniaEN.html): €5,833 → €4,958 room only
+        const formatEUR = (amount) => `${amount.toLocaleString('en-US', { maximumFractionDigits: 0 })} EUR`;
+
+        const BOOKING_DATA = {
+            hotel: "Palonia Beach Resort",
+            location: "Spain",
+            dates: "Aug 10, 2024 - Aug 17, 2024 (7 Nights)",
+            guests: "2 Adults, 3 Children (16, 14, 4)",
+            room: "Premium Family Room (Connected)",
+            roomDetails: {
+                size: "79 m²",
+                headline: "Spacious and elegant two-bedroom suite with living room, ideal for a family vacation.",
+                longDesc: "This 79 m² room is the perfect option to enjoy a vacation without limits, thanks to its two superior bedrooms and a spacious living room. A space designed for all guests to feel included, with modern equipment and total comfort. Bright, elegant and carefully decorated, this room combines spaciousness and style, offering exclusive accommodation where every room becomes a unique experience.",
+                images: [
+                    "assets/room_1.png",
+                    "assets/room_2.png",
+                    "assets/room_3.png"
+                ],
+                amenities: [
+                    { icon: 'fa-snowflake', name: 'Air conditioning' },
+                    { icon: 'fa-temperature-high', name: 'Heating' },
+                    { icon: 'fa-vault', name: 'Safe' },
+                    { icon: 'fa-couch', name: 'Living room' },
+                    { icon: 'fa-bed', name: 'Sofa bed' },
+                    { icon: 'fa-border-all', name: 'Balcony/Terrace' },
+                    { icon: 'fa-wind', name: 'Hairdryer' }
+                ]
+            },
+            includedServices: [
+                "All-Inclusive Board (Standard)",
+                "Access to outdoor pools and solarium",
+                "Free high-speed Wi-Fi",
+                "Daytime and evening entertainment program",
+                "Access to gym and basic sports facilities"
+            ],
+            basePrice: 4958,
+            originalPrice: 5833,
+            discount: 875,
+            // Optional add-ons (email: +€120/day Premium, +€280 excursion) — added via chat / ADD TO STAY
+            availableExtras: [
+                { id: 'premium', name: 'Premium All-Inclusive', shortDesc: 'Themed restaurants and exclusive perks', desc: 'Adds daily access to à la carte restaurants (Italian, American, Andalusian) featuring Healthy corners and natural smoothies to the standard All-Inclusive. It also includes daily minibar restocking.', price: 840 },
+                { id: 'excursion', name: 'Marshlands Excursion + Playroom', shortDesc: 'Bike/Kayak Adventure with Palonia Kids Club service', desc: '3-hour guided sports route through the marshlands for adults and teens. Being an intense activity, it includes a special playroom service and continuous care at the Palonia Kids Club for the 4-year-old girl.', price: 280 }
+            ]
+        };
+
+        const WELLNESS_EXTRAS = [
+            {
+                id: 'early_birds',
+                title: 'EARLY BIRDS SPA',
+                price: 'from 12.00 EUR',
+                image: 'assets/bpubr_well_027.png',
+                desc: 'Start the day taking care of yourself from the calm. Enjoy a relaxing morning session with exclusive access to our thermal facilities before the resort wakes up fully.'
+            },
+            {
+                id: 'water_circuit',
+                title: 'Water Circuit',
+                price: 'from 20.00 EUR',
+                image: 'assets/c4_circuitodeaguas1.png',
+                desc: 'Enjoy access to the jet pool, sauna, Turkish bath, and contrast showers. A complete hydrotherapy experience designed to release tension and improve circulation.'
+            },
+            {
+                id: 'family_treat',
+                title: 'FAMILY TREAT',
+                price: 'from 190.00 EUR',
+                image: 'assets/bpubr_well_001.png',
+                shortDesc: 'A wellness getaway designed for the whole family.',
+                desc: 'A wellness getaway designed for the whole family. Enjoy a complete water circuit together and let the little ones marvel at a chocolate oil massage. Meanwhile, mom and dad can choose a personalized body treatment to recharge their energy. A perfect plan to reconnect, relax, and pamper yourselves as a family.',
+                includes: [
+                    'Access to the water circuit for 4 people (90 minutes)',
+                    'Chocolate oil massage for the kids',
+                    'Choice of body treatment for the adults'
+                ],
+                comments: 'Pack valid for 4 people (2 adults + 2 children). Activity subject to availability. The images shown are for guidance only. Treatments may vary by season.',
+                tags: ['Taxes included', 'Pay at the hotel | Flexible cancellation'],
+                agentforceNote: 'Since this pack is valid for 4 people (perfect for you and the two teens), I can coordinate a complimentary Palonia Kids Club Kids Spa session for your 4-year-old at the exact same time, so everyone enjoys their morning to the fullest!'
+            }
+        ];
+
+        const BEST_RATED_KIDS_ACTIVITY_ID = 'princess_lab';
+
+        // Adaptive Website — hotel activities surfaced from conversation (same UX as wellness)
+        const HOTEL_ACTIVITIES = [
+            {
+                id: 'fun_lounge',
+                title: 'Palonia FUN Lounge',
+                price: 'Included for teens 13+',
+                image: 'assets/room_2.png',
+                guestRating: 4.6,
+                reviewCount: 1840,
+                shortDesc: 'DJ sets, video games and a chill zone built for teenagers.',
+                desc: 'The ultimate hangout for your 16- and 14-year-olds. Evening DJ sessions, next-gen video games, mocktail bar and supervised chill areas — included with your stay for guests 13+.',
+                tags: ['Teen zone', 'Evening entertainment', 'Included in stay'],
+                agentforceNote: 'Based on your children\'s ages (16 & 14), Agentforce surfaced this as a high-fit activity — no extra booking fee for teens.'
+            },
+            {
+                id: 'princess_lab',
+                title: 'Princess Laboratory',
+                price: 'from 25.00 EUR / session',
+                image: 'assets/room_3.png',
+                guestRating: 4.9,
+                reviewCount: 2140,
+                shortDesc: 'Creative workshops and gentle play for the little ones.',
+                desc: 'A magical space where younger children enjoy dress-up, storytelling and creative labs with certified entertainers. Sessions run throughout the day with flexible drop-off windows.',
+                tags: ['Ages 3–8', 'Pay at the hotel', 'Flexible cancellation'],
+                agentforceNote: 'Ideal while your teens are at the FUN Lounge or on the marshlands route — we can coordinate timing so your 4-year-old is always covered.'
+            },
+            {
+                id: 'family_aqua',
+                title: 'Family Aqua Gym',
+                price: 'from 15.00 EUR / person',
+                image: 'assets/hotel_1.png',
+                guestRating: 4.5,
+                reviewCount: 960,
+                shortDesc: 'Guided pool workout for parents and active kids.',
+                desc: 'A fun, low-impact aqua fitness session in the main pool complex. Perfect for active families who want to start the day moving together before breakfast.',
+                tags: ['Morning activity', 'Pay at the hotel', 'All fitness levels'],
+                agentforceNote: 'Matches your interest in morning wellness — pairs well with Early Birds Spa if you want a full active start to the day.'
+            }
+        ];
+
+        const ADAPTIVE_WIDGET_META = {
+            wellness: {
+                title: 'Agentforce Wellness Recommendations',
+                subtitle: 'Adaptive add-ons · Pay at the hotel',
+                footnote: 'These services are charged at the hotel and do not change your room total.'
+            },
+            activities: {
+                title: 'Agentforce Activity Recommendations',
+                subtitle: 'Adaptive Website · Experiences for your family',
+                footnote: 'Saved to your itinerary — payable at the hotel or included as noted.'
+            }
+        };
+
+        function App() {
+          const [isChatOpen, setIsChatOpen] = useState(false); 
+          const [latestAddedExtra, setLatestAddedExtra] = useState(null);
+          
+          // Room package only (€4,958 — matches email). Premium/excursion from email flow stay here if added later.
+          const [addedExtras, setAddedExtras] = useState([]);
+          // Wellness & activities: pay at hotel — do NOT increase room total
+          const [payAtHotelAddOns, setPayAtHotelAddOns] = useState([]);
+          const [webSessionComplete, setWebSessionComplete] = useState(false);
+          const [waOfferChoice, setWaOfferChoice] = useState(null);
+          
+          // Accordion states for main sections (compact view)
+          const [isStayOpen, setIsStayOpen] = useState(false);
+          const [isRoomOpen, setIsRoomOpen] = useState(false);
+          const [isPriceOpen, setIsPriceOpen] = useState(false);
+          
+          // Carousel state
+          const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+          // Adaptive Website widgets (wellness → activities → WhatsApp handoff)
+          const [activeAdaptiveWidget, setActiveAdaptiveWidget] = useState(null);
+          const [expandedAdaptiveId, setExpandedAdaptiveId] = useState(null);
+          const [isAdaptiveThinking, setIsAdaptiveThinking] = useState(false);
+          const [highlightedActivityId, setHighlightedActivityId] = useState(null);
+          const adaptiveThinkingTimeoutRef = useRef(null);
+          const agentReplyTimeoutRef = useRef(null);
+          const activityHighlightRef = useRef(null);
+
+          const [messages, setMessages] = useState([]);
+          const [inputText, setInputText] = useState('');
+          const [isTyping, setIsTyping] = useState(false);
+          const [demoStep, setDemoStep] = useState(0); 
+          
+          const [isSimulatingInput, setIsSimulatingInput] = useState(false);
+          const [isWaitingForAgentTrigger, setIsWaitingForAgentTrigger] = useState(false);
+          
+          const skipInputTypingRef = useRef(false);
+          const typingTimeoutRef = useRef(null);
+          const textareaRef = useRef(null);
+          const chatEndRef = useRef(null);
+          
+          const currentStepRef = useRef(0);
+          useEffect(() => { currentStepRef.current = demoStep; }, [demoStep]);
+
+          const startAdaptiveThinking = () => {
+              setIsAdaptiveThinking(true);
+              if (adaptiveThinkingTimeoutRef.current) clearTimeout(adaptiveThinkingTimeoutRef.current);
+              adaptiveThinkingTimeoutRef.current = setTimeout(() => {
+                  setIsAdaptiveThinking(false);
+                  adaptiveThinkingTimeoutRef.current = null;
+              }, 2000);
+          };
+
+          const confirmActivitySelection = (extra) => {
+              const step = currentStepRef.current;
+              if (step < 12 || extra.id !== BEST_RATED_KIDS_ACTIVITY_ID) return;
+              if (payAtHotelAddOns.some(e => e.id === extra.id)) return;
+
+              const priceNum = parseFloat(String(extra.price).replace(/[^\d.-]/g, '')) || 0;
+              const newExtra = {
+                  id: extra.id,
+                  name: extra.title,
+                  shortDesc: extra.shortDesc || 'Experience',
+                  desc: extra.desc,
+                  price: priceNum,
+                  priceLabel: extra.price,
+                  category: 'activities'
+              };
+
+              setMessages(prev => [...prev, {
+                  role: 'user',
+                  text: `Great — let's add **${extra.title}** for our 4-year-old.`
+              }]);
+
+              setPayAtHotelAddOns(prev => [...prev, newExtra]);
+              setLatestAddedExtra(extra.title);
+              setExpandedAdaptiveId(null);
+              setHighlightedActivityId(null);
+
+              setTimeout(() => {
+                  setActiveAdaptiveWidget(null);
+                  setMessages(prev => [...prev, {
+                      role: 'agent',
+                      text: `Done! **${extra.title}** is on your itinerary (pay at the hotel). Your room total stays at **€4,958**.\n\nPress **Alt** when you're ready to tell me you'd like to discuss with your husband.`
+                  }]);
+                  setDemoStep(13);
+              }, 500);
+          };
+
+          // Function to simulate typing text into the chat input
+          const startTypingInput = (fullText, nextStep) => {
+              setIsSimulatingInput(true);
+              skipInputTypingRef.current = false;
+              let i = 0;
+              const typeNextChar = () => {
+                  if (skipInputTypingRef.current) {
+                      setInputText(fullText);
+                      setIsSimulatingInput(false);
+                      setDemoStep(nextStep);
+                      return;
+                  }
+                  if (i <= fullText.length) {
+                      setInputText(fullText.substring(0, i));
+                      i++;
+                      typingTimeoutRef.current = setTimeout(typeNextChar, 15 + Math.random() * 15);
+                  } else {
+                      setIsSimulatingInput(false);
+                      setDemoStep(nextStep);
+                  }
+              };
+              typeNextChar();
+          };
+
+          useEffect(() => {
+              const scrollToBottom = () => {
+                  chatEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+              };
+              
+              if (isChatOpen) {
+                  scrollToBottom();
+                  const timeoutId = setTimeout(scrollToBottom, 150);
+                  return () => clearTimeout(timeoutId);
+              }
+          }, [messages, isTyping, isChatOpen]);
+
+          useEffect(() => {
+              if (textareaRef.current) {
+                  textareaRef.current.style.height = 'auto';
+                  textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
+              }
+          }, [inputText]);
+
+          useEffect(() => {
+              if (isChatOpen) {
+                  if (demoStep === 0) {
+                      setIsTyping(true);
+                      setIsWaitingForAgentTrigger(true);
+                  }
+              }
+          }, [isChatOpen]);
+
+          const triggerAgentResponse = () => {
+              const step = currentStepRef.current;
+              setIsTyping(false);
+              setIsWaitingForAgentTrigger(false);
+
+              if (step === 0) {
+                  setMessages([{ 
+                    role: 'agent', 
+                    text: 'Hi Sarah! 👋 Welcome to Palonia.com. You have on screen the draft of your stay with the Connected Rooms.\n\nDo you have any questions or doubts I can help you with before completing your booking?' 
+                  }]);
+                  setDemoStep(1);
+              } else if (step === 3) {
+                  setMessages(prev => [
+                    ...prev, 
+                    { 
+                        role: 'agent', 
+                        text: 'Yes! We have excellent wellness options for your mornings:\n\n• **EARLY BIRDS SPA** (from 12.00 EUR)\n• **Water Circuit** (from 20.00 EUR)\n• **FAMILY TREAT** (from 190.00 EUR)\n\nI\'ve personalized the page below based on what you just asked — this is our **adaptive website** in action. All of these are **paid at the hotel** and won\'t change your room total (€4,958).' 
+                    }
+                  ]);
+                  setDemoStep(4);
+                  setActiveAdaptiveWidget('wellness');
+                  startAdaptiveThinking();
+              } else if (step === 7) {
+                  setMessages(prev => [
+                    ...prev, 
+                    { 
+                        role: 'agent', 
+                        text: 'Absolutely! For a family like yours I recommend:\n\n• **Palonia FUN Lounge** (included for teens 13+)\n• **Princess Laboratory** (from 25.00 EUR / session)\n• **Family Aqua Gym** (from 15.00 EUR / person)\n\nI\'ve updated the page again with activities matched to your profile — pick one to add to your itinerary.' 
+                    }
+                  ]);
+                  setHighlightedActivityId(null);
+                  setDemoStep(8);
+                  setActiveAdaptiveWidget('activities');
+                  startAdaptiveThinking();
+              } else if (step === 10) {
+                  const top = HOTEL_ACTIVITIES.find(a => a.id === BEST_RATED_KIDS_ACTIVITY_ID);
+                  setIsAdaptiveThinking(false);
+                  setActiveAdaptiveWidget('activities');
+                  setHighlightedActivityId(BEST_RATED_KIDS_ACTIVITY_ID);
+                  setMessages(prev => [...prev, {
+                    role: 'agent',
+                    text: `For your **4-year-old**, **${top.title}** has the highest guest rating: **${top.guestRating}/5** (${top.reviewCount.toLocaleString()} family reviews).\n\nI've highlighted it on the page — tap **Add to stay** on the highlighted card, or press **Alt** to add it for Sarah.`
+                  }]);
+                  setDemoStep(12);
+              } else if (step === 15) {
+                  setMessages(prev => [...prev, {
+                    role: 'agent',
+                    text: 'Of course — it\'s an important decision for the whole family. 💙\n\nWould you like me to send you a **clear summary of your offer on WhatsApp** (+34 600-***-***) so you can review it together with your husband whenever suits you?',
+                    options: ['Yes, please send it to my WhatsApp', 'Not right now, thanks'],
+                    type: 'wa_offer'
+                  }]);
+                  setDemoStep(16);
+              } else if (step === 17 || step === 18) {
+                  setMessages(prev => [...prev, {
+                    role: 'agent',
+                    text: 'Done! 📱 I\'ve just sent your **booking summary** to WhatsApp — you should see it now.\n\nReview it with your husband at your pace. I\'ll follow up there tomorrow if anything changes. Open WhatsApp to continue.',
+                    type: 'whatsapp_handoff'
+                  }]);
+                  setDemoStep(18);
+                  setWebSessionComplete(true);
+              }
+          };
+
+          const queueAgentReply = (delayMs = 900) => {
+              if (agentReplyTimeoutRef.current) clearTimeout(agentReplyTimeoutRef.current);
+              setIsTyping(true);
+              setIsWaitingForAgentTrigger(false);
+              agentReplyTimeoutRef.current = setTimeout(() => {
+                  agentReplyTimeoutRef.current = null;
+                  triggerAgentResponse();
+              }, delayMs);
+          };
+
+          const handleSendMessage = (textOverride = null) => {
+            const textToSend = textOverride || inputText.trim();
+            if (!textToSend) return;
+
+            setMessages(prev => [...prev, { role: 'user', text: textToSend }]);
+            setInputText('');
+            
+            const currentStep = currentStepRef.current;
+            
+            if (currentStep === 2) {
+                setDemoStep(3);
+                queueAgentReply();
+            } 
+            else if (currentStep === 6) {
+                setDemoStep(7);
+                queueAgentReply();
+            }
+            else if (currentStep === 9) {
+                setDemoStep(10);
+                queueAgentReply();
+            }
+            else if (currentStep === 14) {
+                setDemoStep(15);
+                queueAgentReply();
+            }
+          };
+
+          const handleWaOfferSelection = (option) => {
+              if (waOfferChoice) return;
+              setWaOfferChoice(option);
+              setMessages(prev => [...prev, { role: 'user', text: option }]);
+              setInputText('');
+              if (option.startsWith('Yes')) {
+                  setDemoStep(17);
+                  queueAgentReply();
+              } else {
+                  setMessages(prev => [...prev, {
+                    role: 'agent',
+                    text: 'No problem, Sarah. Your draft stays saved here whenever you\'re ready. I\'m always one message away.'
+                  }]);
+                  setDemoStep(18);
+              }
+          };
+
+          // --- Adaptive add-on (wellness / activities) — pay at hotel only ---
+          const handleAddToStay = (extra, widgetType) => {
+              const priceNum = typeof extra.price === 'number'
+                ? extra.price
+                : (parseFloat(String(extra.price).replace(/[^\d.-]/g, '')) || 0);
+              
+              const newExtra = {
+                  id: extra.id,
+                  name: extra.title,
+                  shortDesc: extra.shortDesc || 'Experience',
+                  desc: extra.desc,
+                  price: priceNum,
+                  priceLabel: extra.price,
+                  category: widgetType
+              };
+
+              setPayAtHotelAddOns(prev => {
+                  if (prev.some(e => e.id === extra.id)) return prev;
+                  return [...prev, newExtra];
+              });
+              setActiveAdaptiveWidget(null);
+              setIsAdaptiveThinking(false);
+              setHighlightedActivityId(null);
+              setExpandedAdaptiveId(null);
+              setLatestAddedExtra(extra.title);
+
+              const step = currentStepRef.current;
+
+              if (widgetType === 'wellness' && step === 4) {
+                  setMessages(prev => [...prev, { 
+                      role: 'agent', 
+                      text: `Excellent choice, Sarah! **${extra.title}** is now on your draft itinerary.\n\nIt is **payable at the hotel** — your room total stays at **€4,958**. Press **Alt** when you're ready to ask about resort activities.` 
+                  }]);
+                  setDemoStep(5);
+              } else if (widgetType === 'activities') {
+                  confirmActivitySelection(extra);
+              }
+          };
+
+          useEffect(() => {
+            const handleKeyDown = (e) => {
+              if (e.key === "Alt" || e.key === "Control" || e.key === "Shift" || e.key === "Meta" || e.key === "Enter") return;
+
+              if (isWaitingForAgentTrigger) {
+                  e.preventDefault();
+                  triggerAgentResponse();
+                  return;
+              }
+
+              if (isSimulatingInput) {
+                  e.preventDefault();
+                  skipInputTypingRef.current = true;
+                  return;
+              }
+
+              const step = currentStepRef.current;
+
+              if (webSessionComplete) return;
+
+              // Send message step handlers
+              if (step === 2 || step === 6 || step === 9 || step === 14) {
+                  e.preventDefault();
+                  handleSendMessage();
+                  return;
+              }
+
+              // Typing step handlers (demo driver: Alt key)
+              if (step === 1 && isChatOpen) {
+                  e.preventDefault();
+                  startTypingInput("Does the hotel have any relaxation service that I can enjoy in the mornings before breakfast?", 2);
+              }
+              else if (step === 5 && isChatOpen) {
+                  e.preventDefault();
+                  startTypingInput("What family activities does the resort offer in the afternoons? Something for the teens and something for our 4-year-old?", 6);
+              }
+              else if (step === 8 && isChatOpen) {
+                  e.preventDefault();
+                  startTypingInput("Of the kids' activities you showed me, which one has the best guest rating?", 9);
+              }
+              else if (step === 12 && isChatOpen) {
+                  e.preventDefault();
+                  const topActivity = HOTEL_ACTIVITIES.find(a => a.id === BEST_RATED_KIDS_ACTIVITY_ID);
+                  if (topActivity) confirmActivitySelection(topActivity);
+              }
+              else if (step === 13 && isChatOpen) {
+                  e.preventDefault();
+                  startTypingInput("I love how everything looks, but I need to think about it and discuss it with my husband before committing.", 14);
+              }
+              else if (step === 16 && isChatOpen && !waOfferChoice) {
+                  e.preventDefault();
+                  handleWaOfferSelection('Yes, please send it to my WhatsApp');
+              }
+            };
+
+            window.addEventListener('keydown', handleKeyDown);
+            return () => window.removeEventListener('keydown', handleKeyDown);
+          }, [isChatOpen, isSimulatingInput, isWaitingForAgentTrigger, demoStep, webSessionComplete, waOfferChoice]);
+
+          useEffect(() => {
+              return () => {
+                  if (adaptiveThinkingTimeoutRef.current) clearTimeout(adaptiveThinkingTimeoutRef.current);
+                  if (agentReplyTimeoutRef.current) clearTimeout(agentReplyTimeoutRef.current);
+              };
+          }, []);
+
+          useEffect(() => {
+              if (highlightedActivityId && activityHighlightRef.current) {
+                  activityHighlightRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+              }
+          }, [highlightedActivityId]);
+
+          const handleNextImage = (e) => {
+              e.stopPropagation();
+              setCurrentImageIndex((prev) => (prev + 1) % BOOKING_DATA.roomDetails.images.length);
+          };
+
+          const handlePrevImage = (e) => {
+              e.stopPropagation();
+              setCurrentImageIndex((prev) => (prev - 1 + BOOKING_DATA.roomDetails.images.length) % BOOKING_DATA.roomDetails.images.length);
+          };
+
+          const roomExtrasPrice = addedExtras.reduce((acc, curr) => acc + curr.price, 0);
+          const payAtHotelTotal = payAtHotelAddOns.reduce((acc, curr) => acc + curr.price, 0);
+          const totalPrice = BOOKING_DATA.basePrice + roomExtrasPrice;
+
+          const renderAdaptiveWidget = () => {
+              if (!activeAdaptiveWidget) return null;
+              const items = activeAdaptiveWidget === 'wellness' ? WELLNESS_EXTRAS : HOTEL_ACTIVITIES;
+              const meta = ADAPTIVE_WIDGET_META[activeAdaptiveWidget];
+
+              return (
+                  <div className="sticky top-[88px] z-40 mb-6 fade-in shadow-2xl rounded-2xl overflow-hidden border-2 border-[#c5a059] bg-white/95 backdrop-blur-md">
+                      <div className="bg-gradient-to-r from-[#1a222d] to-[#2c384a] text-white p-4 flex justify-between items-center shrink-0">
+                          <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shrink-0 shadow-inner overflow-hidden p-1">
+                                  <img src={AGENT_ICON} alt="Agentforce" className="w-full h-full object-contain" />
+                              </div>
+                              <div>
+                                  <span className="font-bold text-[14px] block">{meta.title}</span>
+                                  <span className="text-[11px] text-[#c5a059]">{meta.subtitle}</span>
+                              </div>
+                          </div>
+                          <button onClick={() => { setActiveAdaptiveWidget(null); setExpandedAdaptiveId(null); setIsAdaptiveThinking(false); setHighlightedActivityId(null); }} className="text-gray-300 hover:text-white"><i className="fa-solid fa-xmark text-lg"></i></button>
+                      </div>
+                      <p className="text-[11px] text-gray-600 bg-[#fdfaf5] border-b border-[#eaddca] px-5 py-2 flex items-center gap-2">
+                          <i className="fa-solid fa-wand-magic-sparkles text-[#c5a059]"></i> {meta.footnote}
+                      </p>
+                      {isAdaptiveThinking ? (
+                          <div className="p-5">
+                              <div className="rounded-xl border border-[#eaddca] bg-[#fdfaf5] px-4 py-3 mb-4 flex items-center gap-3">
+                                  <div className="w-8 h-8 rounded-full bg-[#1a222d] text-white flex items-center justify-center">
+                                      <i className="fa-solid fa-brain" style={{ animation: 'pulseGlow 1.2s ease-in-out infinite' }}></i>
+                                  </div>
+                                  <div>
+                                      <p className="text-[12px] font-bold text-[#1a222d]">Agentforce is personalizing your recommendations...</p>
+                                      <p className="text-[11px] text-gray-600">Analyzing profile, kids ages, stay dates and morning preferences.</p>
+                                  </div>
+                              </div>
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                                  {[1,2,3].map((s) => (
+                                      <div key={s} className="border border-gray-200 rounded-xl overflow-hidden bg-white">
+                                          <div className="h-32 thinking-shimmer"></div>
+                                          <div className="p-4 space-y-3">
+                                              <div className="h-4 rounded thinking-shimmer"></div>
+                                              <div className="h-3 rounded thinking-shimmer"></div>
+                                              <div className="h-3 rounded thinking-shimmer w-4/5"></div>
+                                              <div className="h-8 rounded thinking-shimmer mt-2"></div>
+                                          </div>
+                                      </div>
+                                  ))}
+                              </div>
+                          </div>
+                      ) : (
+                      <div className="p-5 grid grid-cols-1 sm:grid-cols-3 gap-5">
+                          {items.map(extra => {
+                              const isExpanded = expandedAdaptiveId === extra.id;
+                              const isHidden = expandedAdaptiveId !== null && !isExpanded;
+                              const isTopRated = highlightedActivityId === extra.id;
+                              const isActivitiesWidget = activeAdaptiveWidget === 'activities';
+                              const canAddThisActivity = !isActivitiesWidget || (highlightedActivityId && isTopRated && demoStep >= 12);
+                              if (isHidden) return null;
+
+                              return (
+                                  <div
+                                      key={extra.id}
+                                      ref={isTopRated ? activityHighlightRef : null}
+                                      className={`bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm flex relative ${isExpanded ? 'flex-col sm:flex-row sm:col-span-3' : 'flex-col'} transition-all duration-300 hover:shadow-md hover:border-[#c5a059] ${isTopRated ? 'activity-top-rated' : ''}`}
+                                  >
+                                      {isTopRated && (
+                                          <div className="absolute top-3 left-3 z-10 bg-[#1a222d] text-white text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 shadow-md">
+                                              <i className="fa-solid fa-star text-[#c5a059]"></i>
+                                              Top rated for kids · {extra.guestRating}/5
+                                          </div>
+                                      )}
+                                      <img src={extra.image} alt={extra.title} className={`${isExpanded ? 'sm:w-1/3 h-48 sm:h-auto' : 'h-32 w-full'} object-cover`} />
+                                      <div className="p-5 flex-1 flex flex-col">
+                                          <div className="flex justify-between items-start mb-2 gap-2">
+                                              <h4 className="font-bold text-[#1a222d] text-[16px] uppercase tracking-wide">{extra.title}</h4>
+                                              {isExpanded && <button onClick={() => setExpandedAdaptiveId(null)} className="text-gray-400 hover:text-[#1a222d] transition-colors"><i className="fa-solid fa-xmark text-lg"></i></button>}
+                                          </div>
+                                          {extra.guestRating && !isTopRated && (
+                                              <p className="text-[11px] text-gray-500 mb-2 flex items-center gap-1">
+                                                  <i className="fa-solid fa-star text-[#c5a059] text-[10px]"></i>
+                                                  {extra.guestRating}/5 · {extra.reviewCount?.toLocaleString()} reviews
+                                              </p>
+                                          )}
+                                          {isTopRated && (
+                                              <p className="text-[11px] text-[#166534] font-semibold mb-2 flex items-center gap-1 bg-[#f0fdf4] border border-[#bbf7d0] px-2 py-1 rounded w-fit">
+                                                  <i className="fa-solid fa-award"></i>
+                                                  Agentforce pick · highest rating for ages 3–8
+                                              </p>
+                                          )}
+                                          <p className="text-[#c5a059] font-bold text-[14px] mb-3">{extra.price} {isExpanded && <span className="text-gray-500 font-normal text-[11px]">· pay at hotel unless included</span>}</p>
+                                          {isExpanded ? (
+                                              <div className="fade-in mb-1 flex-1 flex flex-col">
+                                                  {extra.tags && (
+                                                      <div className="flex flex-wrap gap-2 mb-4">
+                                                          {extra.tags.map((tag, i) => <span key={i} className="text-[10px] bg-gray-100 text-gray-600 px-2.5 py-1 rounded font-medium">{tag}</span>)}
+                                                      </div>
+                                                  )}
+                                                  <p className="text-[13px] text-[#1a222d] mb-4 leading-relaxed font-medium">{extra.desc}</p>
+                                                  {extra.includes && (
+                                                      <div className="mb-4">
+                                                          <h5 className="text-[13px] font-bold text-[#1a222d] mb-2">The experience includes:</h5>
+                                                          <ul className="text-[13px] text-gray-600 space-y-1.5 pl-5 list-disc">
+                                                              {extra.includes.map((inc, i) => <li key={i}>{inc}</li>)}
+                                                          </ul>
+                                                      </div>
+                                                  )}
+                                                  {extra.comments && (
+                                                      <p className="text-[11px] text-gray-500 mb-5"><strong>Additional comments:</strong> {extra.comments}</p>
+                                                  )}
+                                                  {extra.agentforceNote && (
+                                                      <div className="bg-[#fdfaf5] border border-[#eaddca] p-4 rounded-xl mb-5 flex gap-3.5 items-start shadow-sm">
+                                                          <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shrink-0 shadow-inner overflow-hidden p-1 border border-[#c5a059]">
+                                                              <img src={AGENT_ICON} alt="Agentforce" className="w-full h-full object-contain" />
+                                                          </div>
+                                                          <div>
+                                                              <p className="text-[13px] text-[#1a222d] font-bold mb-1">Agentforce Solution</p>
+                                                              <p className="text-[12px] text-[#1a222d] leading-relaxed">{extra.agentforceNote}</p>
+                                                          </div>
+                                                      </div>
+                                                  )}
+                                                  <div className="mt-auto flex justify-between items-center pt-4 border-t border-gray-100">
+                                                      <button onClick={() => setExpandedAdaptiveId(null)} className="text-[#005c8a] text-[12px] font-bold hover:underline"><i className="fa-solid fa-arrow-left mr-1"></i> Back to options</button>
+                                                      <button
+                                                          onClick={() => isActivitiesWidget ? confirmActivitySelection(extra) : handleAddToStay(extra, activeAdaptiveWidget)}
+                                                          disabled={isActivitiesWidget && !canAddThisActivity}
+                                                          className={`font-bold py-2.5 px-6 rounded-lg text-[13px] transition-colors shadow-sm tracking-wide disabled:opacity-40 disabled:cursor-not-allowed ${canAddThisActivity && isTopRated ? 'btn-add-highlighted bg-[#c5a059] text-[#1a222d] hover:bg-[#b8924f]' : 'bg-[#1a222d] text-white hover:bg-[#c5a059]'}`}
+                                                      >ADD TO STAY</button>
+                                                  </div>
+                                              </div>
+                                          ) : (
+                                              <div className="flex-1 flex flex-col">
+                                                  <p className="text-[12px] text-gray-600 mb-4 leading-relaxed flex-1 line-clamp-3">{extra.shortDesc || extra.desc}</p>
+                                                  <div className="mt-auto mb-4">
+                                                      <button onClick={() => setExpandedAdaptiveId(extra.id)} className="text-[#005c8a] text-[12px] font-bold hover:underline">View details</button>
+                                                  </div>
+                                                  <button
+                                                      onClick={() => isActivitiesWidget ? confirmActivitySelection(extra) : handleAddToStay(extra, activeAdaptiveWidget)}
+                                                      disabled={isActivitiesWidget && !canAddThisActivity}
+                                                      className={`w-full border font-bold py-2 rounded-lg text-[12px] transition-colors ${canAddThisActivity && isTopRated ? 'btn-add-highlighted border-[#c5a059] bg-[#c5a059] text-[#1a222d] hover:bg-[#b8924f]' : 'border-[#1a222d] text-[#1a222d] hover:bg-[#1a222d] hover:text-white disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-[#1a222d]'}`}
+                                                  >
+                                                      {isTopRated && canAddThisActivity ? 'Add to stay — recommended' : 'Add to stay'}
+                                                  </button>
+                                              </div>
+                                          )}
+                                      </div>
+                                  </div>
+                              );
+                          })}
+                      </div>
+                      )}
+                  </div>
+              );
+          };
+
+          return (
+            <div className="min-h-screen flex flex-col relative text-[#202124]">
+              <header className="bg-[#1a222d] sticky top-0 z-50 shadow-md">
+                <div className={`mx-auto w-full px-4 lg:px-8 h-16 flex items-center justify-between transition-all duration-700 ease-in-out ${isChatOpen ? 'max-w-[1400px]' : 'max-w-4xl'}`}>
+                  <img src="assets/palonia-primary-logo-white-01.png" alt="Palonia" className="h-14 object-contain" />
+                  <div className="flex items-center gap-6 text-white text-sm font-medium">
+                    <span className="hidden sm:flex items-center gap-2"><i className="fa-solid fa-phone text-xs text-[#c5a059]"></i> 900 666 666</span>
+                    <span className="hidden sm:flex items-center gap-2"><i className="fa-regular fa-circle-user text-lg text-[#c5a059]"></i> Hi, Sarah</span>
+                  </div>
+                </div>
+              </header>
+
+              <main className={`flex-1 mx-auto w-full p-4 lg:p-8 flex flex-col lg:flex-row gap-6 transition-all duration-700 ease-in-out ${isChatOpen ? 'max-w-[1400px]' : 'max-w-4xl'}`}>
+                
+                {/* --- DETAILED BOOKING SUMMARY (LEFT PANE) --- */}
+                <div className={`w-full flex flex-col transition-all duration-700 ease-in-out ${isChatOpen ? 'lg:w-[75%]' : 'lg:w-[100%]'} relative`}>
+                  
+                  {renderAdaptiveWidget()}
+
+                  {webSessionComplete && (
+                      <div className="bg-[#ecfdf5] rounded-xl shadow-lg border-2 border-[#25D366] px-6 py-5 mb-6 flex flex-col sm:flex-row items-start sm:items-center gap-4 fade-in">
+                          <div className="w-12 h-12 bg-[#25D366] rounded-full flex items-center justify-center shrink-0 text-white text-2xl shadow-sm"><i className="fa-brands fa-whatsapp"></i></div>
+                          <div className="flex-1">
+                              <h3 className="font-bold text-[#166534] text-lg">Continue on WhatsApp</h3>
+                              <p className="text-[#15803d] text-sm mt-1">Your offer summary was sent to WhatsApp. Open the chat to review with your husband — Sarah will thank the agent, then receive a <strong>next-day</strong> message with an extra 10% discount.</p>
+                          </div>
+                          <a href="agenticWhatsappPaloniaModificaReservaEN.html" className="shrink-0 bg-[#25D366] hover:bg-[#1da851] text-white font-bold py-3 px-6 rounded-xl text-sm shadow-md transition flex items-center gap-2">
+                              <i className="fa-brands fa-whatsapp text-lg"></i> Open WhatsApp channel
+                          </a>
+                      </div>
+                  )}
+
+                  {latestAddedExtra && !webSessionComplete && (
+                      <div className="bg-[#f0fdf4] rounded-xl shadow-sm border border-[#bbf7d0] px-6 py-5 mb-6 flex items-center gap-4 fade-in">
+                          <div className="w-12 h-12 bg-[#16a34a] rounded-full flex items-center justify-center shrink-0 text-white text-xl shadow-sm"><i className="fa-solid fa-check"></i></div>
+                          <div>
+                              <h3 className="font-bold text-[#166534] text-lg">Added to your itinerary</h3>
+                              <p className="text-[#15803d] text-sm"><strong>{latestAddedExtra}</strong> — payable at the hotel. Your room total remains <strong>{formatEUR(BOOKING_DATA.basePrice)}</strong>.</p>
+                          </div>
+                      </div>
+                  )}
+
+                  {/* 1. Hotel Header (Static) */}
+                  <div className="rounded-xl overflow-hidden mb-4 shadow-sm border border-gray-200 bg-white">
+                      <div className="relative h-32 sm:h-48">
+                          <img src={RESORT_IMG} alt="Resort" className="w-full h-full object-cover" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex flex-col justify-end p-5">
+                              <h1 className="text-[20px] sm:text-[24px] font-bold text-white mb-1 leading-tight">{BOOKING_DATA.hotel}</h1>
+                              <p className="text-white/90 text-[13px] flex items-center gap-1.5"><i className="fa-solid fa-location-dot text-[#c5a059]"></i> {BOOKING_DATA.location}</p>
+                          </div>
+                      </div>
+                  </div>
+
+                  {/* 2. Stay Details (Accordion) */}
+                  <div className="bg-white border border-gray-200 shadow-sm rounded-xl mb-4 overflow-hidden">
+                      <div className="p-5 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => setIsStayOpen(!isStayOpen)}>
+                          <div>
+                              <h2 className="text-[16px] font-bold text-[#1a222d] mb-1">Stay details</h2>
+                              {!isStayOpen && <p className="text-[13px] text-gray-500">{BOOKING_DATA.dates.split('(')[0]} • 7 nights • 5 guests</p>}
+                          </div>
+                          <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-[#1a222d] shrink-0">
+                              <i className={`fa-solid fa-chevron-down text-[12px] transition-transform duration-300 ${isStayOpen ? 'rotate-180' : ''}`}></i>
+                          </div>
+                      </div>
+                      
+                      {isStayOpen && (
+                          <div className="p-5 pt-0 border-t border-gray-100 mt-2 fade-in">
+                              <div className="flex flex-col sm:flex-row justify-between border-b border-gray-100 py-4 mb-4 gap-4 sm:gap-0">
+                                  <div className="w-full sm:w-1/2 sm:pr-4 sm:border-r border-gray-100">
+                                      <p className="text-gray-500 text-[11px] font-bold uppercase tracking-wider mb-1">Check-in</p>
+                                      <p className="font-bold text-[#1a222d] text-[15px] mb-0.5">Sat. Aug 10, 2024</p>
+                                      <p className="text-gray-500 text-[12px]">Check-in from 15:00</p>
+                                  </div>
+                                  <div className="w-full sm:w-1/2 sm:pl-4">
+                                      <p className="text-gray-500 text-[11px] font-bold uppercase tracking-wider mb-1">Check-out</p>
+                                      <p className="font-bold text-[#1a222d] text-[15px] mb-0.5">Sat. Aug 17, 2024</p>
+                                      <p className="text-gray-500 text-[12px]">Check-out until 12:00</p>
+                                  </div>
+                              </div>
+                              <div className="flex justify-between items-center mb-4">
+                                  <span className="bg-gray-100 text-gray-700 px-2.5 py-1 rounded-full text-[11px] font-medium border border-gray-200">7 nights</span>
+                                  <a href="#" className="booking-link font-medium text-[13px]">Edit</a>
+                              </div>
+                              <div className="border-t border-gray-100 pt-4">
+                                  <p className="text-gray-500 text-[11px] font-bold uppercase tracking-wider mb-2">Your Selection</p>
+                                  <div className="flex justify-between items-center">
+                                      <p className="font-bold text-[#1a222d] text-[14px]">1 room(s), 2 adult(s), 3 child(ren)</p>
+                                      <a href="#" className="booking-link font-medium text-[13px]">Edit</a>
+                                  </div>
+                              </div>
+                          </div>
+                      )}
+                  </div>
+
+                  {/* 3. Rooms (Accordion - Info Only) */}
+                  <div className="bg-white border border-gray-200 shadow-sm rounded-xl mb-4 overflow-hidden">
+                      <div className="p-5 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => setIsRoomOpen(!isRoomOpen)}>
+                          <div>
+                              <h2 className="text-[16px] font-bold text-[#1a222d] mb-1">Room 1</h2>
+                              {!isRoomOpen && <p className="text-[13px] text-gray-500 truncate max-w-[200px] sm:max-w-none">{BOOKING_DATA.room}</p>}
+                          </div>
+                          <div className="flex items-center gap-4 shrink-0">
+                              <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-[#1a222d]">
+                                  <i className={`fa-solid fa-chevron-down text-[12px] transition-transform duration-300 ${isRoomOpen ? 'rotate-180' : ''}`}></i>
+                              </div>
+                          </div>
+                      </div>
+
+                      {isRoomOpen && (
+                          <div className="border-t border-gray-100 fade-in">
+                              <div className="p-5 pb-0">
+                                  <h3 className="text-[16px] font-bold text-[#005c8a] mb-4">{BOOKING_DATA.room}</h3>
+                                  
+                                  {/* --- ALWAYS VISIBLE CAROUSEL + DETAILS --- */}
+                                  <div className="mb-6 border border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm">
+                                      {/* Always Visible Images */}
+                                      <div className="relative h-48 sm:h-64 bg-gray-100">
+                                          <img src={BOOKING_DATA.roomDetails.images[currentImageIndex]} alt="Room detail" className="w-full h-full object-cover transition-opacity duration-300" />
+                                          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-sm text-white text-[11px] px-3 py-1.5 rounded-lg flex items-center gap-2 font-medium tracking-wide">
+                                              <i className="fa-solid fa-camera"></i> {currentImageIndex + 1}/{BOOKING_DATA.roomDetails.images.length}
+                                          </div>
+                                          
+                                          <div onClick={handlePrevImage} className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/40 backdrop-blur-sm text-white rounded-full flex items-center justify-center cursor-pointer hover:bg-black/60 transition-colors">
+                                              <i className="fa-solid fa-chevron-left text-xs"></i>
+                                          </div>
+                                          
+                                          <div onClick={handleNextImage} className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/40 backdrop-blur-sm text-white rounded-full flex items-center justify-center cursor-pointer hover:bg-black/60 transition-colors">
+                                              <i className="fa-solid fa-chevron-right text-xs"></i>
+                                          </div>
+                                      </div>
+
+                                      {/* Room Features (Directly visible) */}
+                                      <div className="p-5 border-t border-gray-200">
+                                          <div className="flex flex-wrap gap-2 mb-4">
+                                              <span className="bg-gray-100 border border-gray-200 text-gray-700 text-[11px] px-2.5 py-1 rounded font-bold">{BOOKING_DATA.roomDetails.size}</span>
+                                          </div>
+                                          <h4 className="text-[15px] font-bold text-[#1a222d] mb-2.5 leading-snug">{BOOKING_DATA.roomDetails.headline}</h4>
+                                          <p className="text-[13px] text-gray-600 mb-6 leading-relaxed">{BOOKING_DATA.roomDetails.longDesc}</p>
+                                          
+                                          <h5 className="text-[14px] font-bold text-[#1a222d] mb-3">Room amenities</h5>
+                                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                              {BOOKING_DATA.roomDetails.amenities.map((am, idx) => (
+                                                  <div key={idx} className="border border-gray-200 rounded-lg p-4 flex flex-col items-center justify-center text-center gap-2 bg-gray-50/50">
+                                                      <i className={`fa-solid ${am.icon} text-gray-400 text-xl mb-1`}></i>
+                                                      <span className="text-[11px] text-gray-600 font-medium leading-tight">{am.name}</span>
+                                                  </div>
+                                              ))}
+                                          </div>
+                                      </div>
+                                  </div>
+                                  {/* --- END CAROUSEL & DETAILS --- */}
+
+                                  <div className="inline-flex items-center gap-1.5 bg-[#fef2f2] border border-[#fecaca] text-[#b91c1c] px-3 py-1.5 rounded-full text-[11px] font-bold tracking-wide mb-5">
+                                      <i className="fa-regular fa-clock"></i> Hurry! It's the last one available
+                                  </div>
+
+                                  <p className="text-[14px] text-[#1a222d] font-medium mb-1">Standard All-Inclusive</p>
+                                  <p className="text-[13px] text-gray-600 mb-5">Non-refundable rate</p>
+
+                                  <div className="flex gap-5 text-[13px] font-medium pb-6">
+                                      <a href="#" className="booking-link">Edit</a>
+                                      <a href="#" className="booking-link">View conditions</a>
+                                  </div>
+                              </div>
+
+                              {/* Adaptive itinerary (pay at hotel) */}
+                              {payAtHotelAddOns.length > 0 && (
+                              <div className="bg-gray-50 p-5 border-t border-gray-200">
+                                  <p className="text-[11px] text-gray-500 font-bold uppercase tracking-wider mb-4 flex items-center gap-2"><i className="fa-solid fa-wand-magic-sparkles text-[#c5a059]"></i> Your itinerary (pay at hotel)</p>
+                                  <ul className="space-y-3">
+                                      {payAtHotelAddOns.map(extra => (
+                                          <li key={extra.id} className="flex items-start gap-3">
+                                              <i className="fa-solid fa-circle-check text-[#c5a059] mt-0.5"></i>
+                                              <div>
+                                                  <h4 className="text-[13px] font-bold text-[#1a222d] mb-0.5">{extra.name}</h4>
+                                                  <p className="text-[12px] text-gray-600">{extra.shortDesc}</p>
+                                                  {extra.priceLabel && <p className="text-[11px] text-[#c5a059] font-semibold mt-0.5">{extra.priceLabel}</p>}
+                                              </div>
+                                          </li>
+                                      ))}
+                                  </ul>
+                              </div>
+                              )}
+                              {addedExtras.length > 0 && (
+                              <div className="bg-gray-50 p-5 border-t border-gray-200">
+                                  <p className="text-[11px] text-gray-500 font-bold uppercase tracking-wider mb-4">Room package add-ons</p>
+                                  <ul className="space-y-3">
+                                      {addedExtras.map(extra => (
+                                          <li key={extra.id} className="flex items-start gap-3">
+                                              <i className="fa-solid fa-circle-check text-[#1a222d] mt-0.5"></i>
+                                              <div>
+                                                  <h4 className="text-[13px] font-bold text-[#1a222d] mb-0.5">{extra.name}</h4>
+                                                  <p className="text-[12px] text-gray-600">{extra.shortDesc}</p>
+                                              </div>
+                                          </li>
+                                      ))}
+                                  </ul>
+                              </div>
+                              )}
+                          </div>
+                      )}
+                  </div>
+
+                  {/* 4. Price Breakdown (Accordion - All Pricing Info) */}
+                  <div className="bg-white border border-gray-200 shadow-sm rounded-xl mb-4 overflow-hidden">
+                      <div className="p-5 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => setIsPriceOpen(!isPriceOpen)}>
+                          <div>
+                              <h2 className="text-[16px] font-bold text-[#1a222d] mb-1">Price breakdown</h2>
+                              {!isPriceOpen && (
+                                <p className="text-[13px] text-[#166534] font-medium">
+                                  Includes {formatEUR(BOOKING_DATA.discount)} in discounts
+                                  <span className="text-gray-500 font-normal"> · Room rate only</span>
+                                  {payAtHotelAddOns.length > 0 && <span className="text-gray-500 font-normal"> · {payAtHotelAddOns.length} experience(s) at hotel</span>}
+                                </p>
+                              )}
+                          </div>
+                          <div className="flex items-center gap-4 shrink-0">
+                              {!isPriceOpen && <span className="font-bold text-[#1a222d] text-[16px]">{formatEUR(totalPrice)}</span>}
+                              <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-[#1a222d]">
+                                  <i className={`fa-solid fa-chevron-down text-[12px] transition-transform duration-300 ${isPriceOpen ? 'rotate-180' : ''}`}></i>
+                              </div>
+                          </div>
+                      </div>
+
+                      {isPriceOpen && (
+                          <div className="p-5 pt-0 border-t border-gray-100 mt-2 fade-in">
+                              
+                              {/* ROOM PRICE BREAKDOWN */}
+                              <div className="mt-4 mb-5 pb-5 border-b border-gray-200">
+                                  <h3 className="text-[14px] font-bold text-[#1a222d] mb-3">Room 1: {BOOKING_DATA.room}</h3>
+                                  <div className="flex justify-between items-end mb-3">
+                                      <p className="text-[13px] font-medium text-gray-700">2 adult(s), 3 child(ren)</p>
+                                      <div className="text-right">
+                                          <span className="text-gray-400 line-through text-[12px] mr-2">{formatEUR(BOOKING_DATA.originalPrice)}</span>
+                                          <span className="text-[15px] font-bold text-[#1a222d]">{formatEUR(BOOKING_DATA.basePrice)}</span>
+                                      </div>
+                                  </div>
+                                  
+                                  {/* Simulated daily breakdown */}
+                                  <div className="text-[13px] text-gray-500 mb-3 space-y-1.5 bg-gray-50 p-3 rounded-lg border border-gray-100">
+                                      <div className="flex justify-between"><span>Sat, Aug 10, 2024</span><span>800.00 EUR</span></div>
+                                      <div className="flex justify-between"><span>Sun, Aug 11, 2024</span><span>750.00 EUR</span></div>
+                                      <div className="flex justify-between"><span>Mon, Aug 12, 2024</span><span>660.00 EUR</span></div>
+                                      <div className="flex justify-between"><span>Tue, Aug 13, 2024</span><span>640.00 EUR</span></div>
+                                      <div className="flex justify-between"><span>Wed, Aug 14, 2024</span><span>640.00 EUR</span></div>
+                                      <div className="flex justify-between"><span>Thu, Aug 15, 2024</span><span>740.00 EUR</span></div>
+                                      <div className="flex justify-between"><span>Fri, Aug 16, 2024</span><span>728 EUR</span></div>
+                                  </div>
+                                  <p className="text-[10px] text-gray-500 text-right mt-2">The price per night has discounts applied</p>
+                              </div>
+
+                              {/* PAY AT HOTEL (adaptive itinerary — not in room total) */}
+                              {payAtHotelAddOns.length > 0 && (
+                              <div className="mb-6 pb-5 border-b border-gray-200">
+                                  <h3 className="text-[14px] font-bold text-[#1a222d] mb-2 flex items-center gap-2"><i className="fa-solid fa-wand-magic-sparkles text-[#c5a059]"></i> Pay at the hotel</h3>
+                                  <p className="text-[11px] text-gray-500 mb-4">Personalized via Adaptive Website — not included in room total below.</p>
+                                  <div className="space-y-4">
+                                      {payAtHotelAddOns.map(extra => (
+                                          <div key={extra.id} className="flex justify-between items-start text-[13px] fade-in">
+                                              <div>
+                                                  <p className="font-bold text-[#005c8a] mb-0.5">{extra.name}</p>
+                                                  <p className="text-[11px] text-gray-500">{extra.priceLabel || 'At hotel checkout'}</p>
+                                              </div>
+                                              {extra.price > 0 && <span className="font-bold text-[#1a222d]">{formatEUR(extra.price)}</span>}
+                                              {extra.price === 0 && <span className="text-[11px] font-bold text-[#166534]">Included</span>}
+                                          </div>
+                                      ))}
+                                  </div>
+                              </div>
+                              )}
+                              {addedExtras.length > 0 && (
+                              <div className="mb-6 pb-5 border-b border-gray-200">
+                                  <h3 className="text-[14px] font-bold text-[#1a222d] mb-4">Room package add-ons</h3>
+                                  <div className="space-y-4">
+                                      {addedExtras.map(extra => (
+                                          <div key={extra.id} className="flex justify-between items-start text-[13px] fade-in">
+                                              <div>
+                                                  <p className="font-bold text-[#005c8a] mb-0.5">{extra.name}</p>
+                                                  <p className="text-[11px] text-gray-500">Added to room package</p>
+                                              </div>
+                                              <span className="font-bold text-[#1a222d]">{formatEUR(extra.price)}</span>
+                                          </div>
+                                      ))}
+                                  </div>
+                              </div>
+                              )}
+
+                              {/* DISCOUNTS */}
+                              <p className="text-[11px] text-gray-500 font-bold uppercase tracking-wider mb-4">Your discounts</p>
+
+                              <div className="space-y-3 text-[13px] text-[#1a222d] mb-5 font-medium">
+                                  <div className="flex justify-between items-center">
+                                      <span>my Palonia Benefits Tariff</span>
+                                      <span className="text-[#166534] flex items-center gap-1.5">Applied <i className="fa-solid fa-circle-check"></i></span>
+                                  </div>
+                                  <div className="flex justify-between items-center">
+                                      <span>10PALONIA26 Promo Code (-10%)</span>
+                                      <span className="text-[#166534] flex items-center gap-1.5">Applied <i className="fa-solid fa-circle-check"></i></span>
+                                  </div>
+                                  <div className="flex justify-between items-center">
+                                      <span>Large Family Applied (-5%)</span>
+                                      <span className="text-[#166534] flex items-center gap-1.5">Applied <i className="fa-solid fa-circle-check"></i></span>
+                                  </div>
+                              </div>
+
+                              <div className="bg-[#f0fdf4] border border-[#bbf7d0] text-[#166534] p-4 rounded-lg text-[13px] font-medium mb-6 leading-relaxed">
+                                  Congratulations! In this booking you are saving <br/>
+                                  <strong className="text-[14px]">{formatEUR(BOOKING_DATA.discount)}</strong> in the room price
+                              </div>
+
+                              {/* SUBTOTALS & TOTAL */}
+                              <div className="bg-gray-50 p-5 rounded-xl border border-gray-100">
+                                  <div className="mb-4 pb-4 border-b border-gray-200">
+                                      <p className="text-[13px] text-[#1a222d] font-bold mb-1.5">Rooms subtotal</p>
+                                      <div className="flex justify-between text-[12px] text-gray-600">
+                                          <span>Taxes and fees (10%)</span>
+                                          <span>{formatEUR(Math.round(BOOKING_DATA.basePrice * 0.1))}</span>
+                                      </div>
+                                  </div>
+
+                                  {roomExtrasPrice > 0 && (
+                                  <div className="mb-4 pb-4 border-b border-gray-200">
+                                      <p className="text-[13px] text-[#1a222d] font-bold mb-1.5">Room add-ons subtotal</p>
+                                      <div className="flex justify-between text-[12px] text-gray-600">
+                                          <span>Taxes and fees (10%)</span>
+                                          <span>{formatEUR(Math.round(roomExtrasPrice * 0.1))}</span>
+                                      </div>
+                                  </div>
+                                  )}
+
+                                  <div className="flex justify-between items-end mb-1">
+                                      <span className="text-[16px] font-bold text-[#1a222d]">Total stay</span>
+                                      <span className="text-[20px] font-bold text-[#1a222d]">{formatEUR(totalPrice)}</span>
+                                  </div>
+                                  <p className="text-[11px] text-gray-500 text-right">Taxes included</p>
+                              </div>
+
+                              <div className="bg-gray-50 p-5 rounded-xl border border-gray-100 mt-4 space-y-3 text-[14px]">
+                                  <div className="flex justify-between font-bold text-[#1a222d]">
+                                      <span>You will pay now</span>
+                                      <span>{formatEUR(BOOKING_DATA.basePrice)}</span>
+                                  </div>
+                                  {payAtHotelAddOns.length > 0 && (
+                                  <div className="flex justify-between text-gray-700 font-medium border-t border-gray-200 pt-3">
+                                      <span>Experiences at the hotel (wellness & activities)</span>
+                                      <span>{payAtHotelTotal > 0 ? formatEUR(payAtHotelTotal) : 'See rates'}</span>
+                                  </div>
+                                  )}
+                              </div>
+                          </div>
+                      )}
+                  </div>
+                  
+                  <button className="w-full mt-2 bg-[#1a222d] text-white font-bold py-4 rounded-xl opacity-50 cursor-not-allowed uppercase text-sm tracking-wide shadow-md hover:bg-[#2c384a] transition-colors">Confirm Booking (Pending)</button>
+
+                </div>
+
+                {/* --- AGENTFORCE CHAT (RIGHT PANE) --- */}
+                {isChatOpen && (
+                  <div className={`w-full flex flex-col bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden relative transition-all duration-700 ease-in-out h-[600px] lg:h-[calc(100vh-120px)] lg:w-[25%] min-w-[320px] lg:sticky lg:top-24 lg:self-start`}>
+                    <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between bg-[#1a222d] text-white shrink-0">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shrink-0 shadow-inner overflow-hidden"><img src={AGENT_ICON} alt="Agentforce" className="w-full h-full object-cover" /></div>
+                        <div><h2 className="font-bold text-[14px]">Palonia Agentforce</h2><p className="text-[10px] text-gray-300 flex items-center gap-1 opacity-80"><span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span> Active</p></div>
+                      </div>
+                      <button onClick={() => setIsChatOpen(false)} className="text-gray-300 hover:text-white transition"><i className="fa-solid fa-xmark text-lg"></i></button>
+                    </div>
+                    
+                    <div className="flex-1 overflow-y-auto p-4 space-y-5 bg-[#f6f8fc]">
+                      <div className="text-center text-[10px] text-gray-400 font-bold mb-2 uppercase tracking-widest opacity-60">Continuous Session</div>
+                      {messages.map((msg, index) => (
+                        <div key={index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} fade-in`}>
+                          {msg.role === 'agent' && <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center shrink-0 mr-2 mt-1 shadow-sm border border-gray-200 overflow-hidden"><img src={AGENT_ICON} alt="Agentforce" className="w-full h-full object-cover" /></div>}
+                          <div className={`max-w-[85%] flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                            <div className={`px-3.5 py-2.5 text-[13px] leading-relaxed shadow-sm ${msg.role === 'user' ? 'bg-[#c5a059] text-white rounded-2xl rounded-tr-sm font-medium' : 'bg-white border border-gray-200 text-[#202124] rounded-2xl rounded-tl-sm'}`}>
+                                <span dangerouslySetInnerHTML={{ __html: msg.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br/>') }} />
+                            </div>
+                            {msg.options && (
+                                <div className="mt-2 flex flex-col gap-1.5 w-full fade-in">
+                                    {msg.options.map((opt, idx) => (
+                                        <button key={idx} onClick={() => handleWaOfferSelection(opt)} className={`bg-white border ${waOfferChoice === opt ? 'border-[#1a222d] ring-1 ring-[#1a222d]' : 'border-[#c5a059]'} text-[#1a222d] hover:bg-[#fdfaf5] px-3 py-2 rounded-lg text-[12px] font-medium text-left transition flex justify-between items-center group shadow-sm disabled:opacity-80`} disabled={waOfferChoice !== null}>
+                                            <span className="flex items-center gap-2"><i className={`fa-brands fa-whatsapp ${waOfferChoice === opt ? 'text-[#1a222d]' : 'text-[#25D366]'} mr-1.5`}></i>{opt}</span>
+                                            <i className="fa-solid fa-chevron-right text-[10px] text-[#c5a059] opacity-0 group-hover:opacity-100 transition transform group-hover:translate-x-1"></i>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                            {msg.type === 'whatsapp_handoff' && (
+                                <a href="agenticWhatsappPaloniaModificaReservaEN.html" className="mt-2 inline-flex items-center gap-2 bg-[#25D366] hover:bg-[#1da851] text-white font-bold px-4 py-2.5 rounded-lg text-[12px] shadow-sm transition">
+                                    <i className="fa-brands fa-whatsapp text-base"></i> Open WhatsApp — booking summary
+                                </a>
+                            )}
+                          </div>
+                          {msg.role === 'user' && <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center shrink-0 ml-2 mt-1 font-bold text-[10px] shadow-sm border border-white/20">S</div>}
+                        </div>
+                      ))}
+                      {isTyping && (
+                        <div className="flex justify-start fade-in">
+                          <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center shrink-0 mr-2 shadow-sm border border-gray-200 overflow-hidden"><img src={AGENT_ICON} alt="Agentforce" className="w-full h-full object-cover" /></div>
+                          <div className="bg-white border border-gray-200 px-4 py-3 rounded-2xl rounded-tl-sm shadow-sm flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                            <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                            <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                          </div>
+                        </div>
+                      )}
+                      <div ref={chatEndRef} />
+                    </div>
+                    
+                    <div className="p-3 bg-white border-t border-gray-200 shrink-0">
+                      <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }} className="relative flex flex-col">
+                        <div className="relative flex items-end gap-2">
+                            <textarea ref={textareaRef} value={inputText} onChange={(e) => setInputText(e.target.value)} rows="1" placeholder={webSessionComplete ? "Session continued on WhatsApp" : "Type your message..."} className="chat-textarea w-full bg-gray-100 border border-transparent rounded-2xl py-2.5 pl-4 pr-12 text-[13px] text-[#202124] outline-none focus:bg-white focus:border-[#c5a059] focus:ring-2 focus:ring-[#c5a059]/20 transition-all overflow-hidden" readOnly={isSimulatingInput || webSessionComplete} />
+                            <button type="submit" disabled={!inputText.trim() || isSimulatingInput || webSessionComplete} className="absolute right-1.5 bottom-1.5 p-2 bg-[#1a222d] text-white rounded-full hover:bg-[#c5a059] disabled:bg-gray-300 transition-colors shadow-sm">
+                                <i className="fa-solid fa-paper-plane text-[11px] ml-[-1px]"></i>
+                            </button>
+                        </div>
+                      </form>
+                      <div className="flex items-center justify-center gap-1 mt-2 text-[10px] text-gray-400 font-medium text-center">
+                        <i className="fa-solid fa-sparkles text-[#c5a059]"></i>
+                        {webSessionComplete ? 'Adaptive session complete · WhatsApp' : 'Agentforce · Adaptive Website'}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </main>
+
+              {!isChatOpen && (
+                <button onClick={() => setIsChatOpen(true)} className="fixed bottom-6 right-6 lg:bottom-10 lg:right-10 bg-[#1a222d] text-white p-4 rounded-full shadow-2xl hover:bg-[#2c384a] hover:scale-105 transition-all duration-300 flex items-center gap-3 z-50 group fade-in">
+                  <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shrink-0 shadow-sm overflow-hidden"><img src={AGENT_ICON} alt="Agentforce" className="w-full h-full object-cover" /></div>
+                  <span className="font-bold hidden sm:block max-w-0 overflow-hidden group-hover:max-w-[200px] transition-all duration-500 whitespace-nowrap text-[#c5a059]">Talk to Palonia Agentforce</span>
+                  <span className="absolute top-0 right-0 w-3.5 h-3.5 bg-[#c5a059] border-2 border-[#1a222d] rounded-full animate-pulse"></span>
+                </button>
+              )}
+            </div>
+          );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

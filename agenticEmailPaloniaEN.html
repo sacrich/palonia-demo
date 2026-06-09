@@ -1,0 +1,1292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="assets/demo-base.js"></script>
+    <title>Gmail - Summer is back. Design your family stay with Palonia.</title>
+    <!-- Favicon -->
+    <link rel="icon" href="assets/palonia-icon.png" type="image/x-icon">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Inter:wght@400;500;600;700&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        /* Tipografía UI de Gmail y cuerpo */
+        body { font-family: 'Google Sans', 'Inter', sans-serif; background-color: #f6f8fc; }
+        
+        /* Contenedor principal para no hacer scroll en la ventana, solo en el contenido */
+        .app-wrapper { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        
+        /* Animación de entrada */
+        .email-item { opacity: 0; transform: translateY(20px); transition: all 0.5s cubic-bezier(0.2, 0.8, 0.2, 1); display: none; }
+        .email-item.active { display: block; }
+        .email-item.visible { opacity: 1; transform: translateY(0); }
+        
+        /* ESTILOS ESPECÍFICOS DEL EMAIL Palonia */
+        .clean-email { font-family: 'Montserrat', sans-serif; color: #333333; }
+        .palonia-blue { color: #1a222d; }
+        .palonia-bg-blue { background-color: #1a222d; }
+        .palonia-gold { color: #c5a059; }
+
+        .btn-agentforce {
+            background-color: #fdfaf5;
+            color: #c5a059;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            border: 1px solid #c5a059;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary { 
+            background-color: #1a222d;
+            color: white; 
+            width: 100%; 
+            padding: 14px; 
+            font-weight: 600; 
+            font-size: 13px; 
+            text-transform: uppercase; 
+            letter-spacing: 1px;
+            border-radius: 4px; 
+            display: block; 
+            text-decoration: none;
+            transition: background 0.3s;
+        }
+        .btn-primary:hover { background-color: #2c384a; }
+
+        /* Estilos del sidebar clonado de Gmail */
+        .nav-item { display: flex; align-items: center; padding: 0 12px 0 26px; height: 32px; font-size: 14px; color: #202124; border-radius: 0 16px 16px 0; margin-right: 16px; cursor: pointer; }
+        .nav-item:hover { background-color: #f1f3f4; }
+        .nav-item.active { background-color: #d3e3fd; color: #041e49; font-weight: 600; }
+        .nav-item i { width: 24px; font-size: 16px; margin-right: 18px; color: #444746; }
+        .nav-item.active i { color: #041e49; }
+
+        /* Scrollbar personalizado */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #dadce0; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #bdc1c6; }
+        
+        /* Animación cursor de escritura */
+        .typing-cursor { animation: blink 1s step-end infinite; font-weight: normal; color: #1a222d; margin-left: 2px; }
+        @keyframes blink { 50% { opacity: 0; } }
+
+        /* Estilos del Banner de Nuevo Mensaje (Estilo Gmail) */
+        .message-banner { 
+            display: none; 
+            background-color: #f9edbe; 
+            border: 1px solid #f0c36d; 
+            padding: 6px 12px; 
+            font-size: 13px; 
+            color: #000; 
+            border-radius: 2px; 
+            transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); 
+            opacity: 0; 
+            transform: translateY(5px); 
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            width: max-content;
+            margin-left: auto; 
+            margin-right: 8px;
+            margin-bottom: 20px;
+            margin-top: -12px;
+            position: relative;
+            z-index: 10;
+        }
+        .message-banner.visible-banner { 
+            display: flex; 
+            opacity: 1; 
+            transform: translateY(0); 
+        }
+        @media (max-width: 768px) { 
+            .message-banner { margin-right: 0; margin-left: auto; } 
+        }
+        .banner-link {
+            color: #000;
+            text-decoration: underline;
+            cursor: pointer;
+            margin-left: 2px;
+        }
+        .banner-link:hover { opacity: 0.7; }
+
+        /* Demo ends at email4_3 — hide follow-up thread */
+        #compose2_7, #email4_4, #email4_5, #compose2_8, #email4_6, #email5, #compose3, #email7, #email8 {
+            display: none !important;
+        }
+        #viewWebBtn { box-shadow: 0 4px 14px rgba(26, 34, 45, 0.25); }
+        #viewWebBtn.demo-highlight { animation: webBtnPulse 2s ease-in-out infinite; outline: 2px solid #c5a059; outline-offset: 2px; }
+        @keyframes webBtnPulse {
+            0%, 100% { box-shadow: 0 4px 14px rgba(197, 160, 89, 0.4); }
+            50% { box-shadow: 0 4px 22px rgba(197, 160, 89, 0.85); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-wrapper">
+        <!-- GMAIL HEADER CLONADO -->
+        <header class="flex items-center justify-between px-4 py-2 bg-[#f6f8fc] shrink-0">
+            <div class="flex items-center gap-4 w-[238px] shrink-0">
+                <div class="p-3 rounded-full hover:bg-gray-200 cursor-pointer transition">
+                    <i class="fa-solid fa-bars text-gray-600 text-[18px]"></i>
+                </div>
+                <img src="https://ssl.gstatic.com/ui/v1/icons/mail/rfr/logo_gmail_lockup_default_1x_r5.png" alt="Gmail" class="h-10">
+            </div>
+            
+            <div class="flex-1 max-w-[720px] px-2">
+                <div class="bg-[#eaf1fb] hover:bg-white hover:shadow flex items-center px-4 py-2.5 rounded-full transition-all">
+                    <i class="fa-solid fa-magnifying-glass text-gray-600 ml-1 mr-4"></i>
+                    <input type="text" placeholder="Search mail" class="bg-transparent border-none outline-none w-full text-[15px] text-gray-700">
+                    <i class="fa-solid fa-sliders text-gray-600 ml-4 p-2 rounded-full hover:bg-gray-100 cursor-pointer"></i>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-1 shrink-0 px-2 text-gray-600">
+                <div class="p-2.5 rounded-full hover:bg-gray-200 cursor-pointer"><i class="fa-regular fa-circle-question text-[20px]"></i></div>
+                <div class="p-2.5 rounded-full hover:bg-gray-200 cursor-pointer"><i class="fa-solid fa-gear text-[20px]"></i></div>
+                <div class="p-2.5 rounded-full hover:bg-gray-200 cursor-pointer mr-2"><i class="fa-solid fa-braille text-[20px]"></i></div>
+                <div class="w-8 h-8 bg-blue-600 rounded-full text-white flex items-center justify-center font-bold text-sm cursor-pointer ring-2 ring-white">S</div>
+            </div>
+        </header>
+
+        <!-- CUERPO PRINCIPAL -->
+        <div class="flex flex-1 overflow-hidden">
+            
+            <!-- LEFT SIDEBAR -->
+            <aside class="w-[256px] hidden md:flex flex-col bg-[#f6f8fc] shrink-0 py-2">
+                <div class="pl-2 mb-4">
+                    <button class="bg-[#c2e7ff] hover:bg-[#b5defb] text-[#001d35] flex items-center gap-4 px-4 py-3.5 rounded-2xl font-medium text-[14px] transition shadow-sm mx-2">
+                        <i class="fa-solid fa-pencil text-[18px]"></i>
+                        Compose
+                    </button>
+                </div>
+                
+                <div class="flex-1 overflow-y-auto">
+                    <div class="nav-item active">
+                        <i class="fa-solid fa-inbox"></i>
+                        <span class="flex-1">Inbox</span>
+                        <span class="text-xs font-bold mr-1">12</span>
+                    </div>
+                    <div class="nav-item">
+                        <i class="fa-regular fa-star"></i>
+                        <span class="flex-1">Starred</span>
+                    </div>
+                    <div class="nav-item">
+                        <i class="fa-regular fa-clock"></i>
+                        <span class="flex-1">Snoozed</span>
+                    </div>
+                    <div class="nav-item">
+                        <i class="fa-regular fa-bookmark"></i>
+                        <span class="flex-1">Important</span>
+                    </div>
+                    <div class="nav-item">
+                        <i class="fa-regular fa-paper-plane"></i>
+                        <span class="flex-1">Sent</span>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- EMAIL CONTENT AREA -->
+            <div class="flex-1 bg-white md:rounded-2xl md:mr-4 md:mb-4 shadow-sm flex flex-col overflow-hidden relative">
+                
+                <!-- Toolbar Pegajoso -->
+                <div class="sticky top-0 bg-white px-2 py-2 flex items-center justify-between text-[#444746] z-10">
+                    <div class="flex items-center gap-1">
+                        <div class="p-2.5 rounded-full hover:bg-[#f1f3f4] cursor-pointer"><i class="fa-solid fa-arrow-left text-[15px]"></i></div>
+                        <div class="w-[1px] h-5 bg-gray-200 mx-2"></div>
+                        <div class="p-2.5 rounded-full hover:bg-[#f1f3f4] cursor-pointer"><i class="fa-solid fa-box-archive text-[15px]"></i></div>
+                        <div class="p-2.5 rounded-full hover:bg-[#f1f3f4] cursor-pointer"><i class="fa-solid fa-circle-exclamation text-[15px]"></i></div>
+                        <div class="p-2.5 rounded-full hover:bg-[#f1f3f4] cursor-pointer"><i class="fa-regular fa-trash-can text-[15px]"></i></div>
+                        <div class="w-[1px] h-5 bg-gray-200 mx-2"></div>
+                        <div class="p-2.5 rounded-full hover:bg-[#f1f3f4] cursor-pointer"><i class="fa-regular fa-envelope text-[15px]"></i></div>
+                    </div>
+                </div>
+
+                <!-- Scrollable Content -->
+                <div class="flex-1 overflow-y-auto px-4 md:px-14 py-4" id="scrollContainer">
+                    
+                    <!-- Subject -->
+                    <div class="flex items-center justify-between mb-8 pl-12 pr-4 mt-2">
+                        <div class="flex items-center gap-3 flex-wrap">
+                            <h1 class="text-[22px] text-[#1f1f1f] font-normal leading-tight">Summer is back. Design your family stay with Palonia.</h1>
+                            <span class="bg-[#e8eaed] text-[#3c4043] text-[11px] font-medium px-2 py-0.5 rounded flex items-center gap-1.5 cursor-pointer hover:bg-gray-300">
+                                Inbox <i class="fa-solid fa-xmark text-[10px]"></i>
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- EMAIL 1: PROMOCIÓN Palonia VERANO -->
+                    <div class="email-item mb-2" id="email1">
+                        <div class="flex items-start gap-3 mb-2">
+                            <div class="w-10 h-10 border border-gray-200 rounded-full bg-[#1a222d] flex items-center justify-center shrink-0">
+                                <span class="text-white font-bold text-xs">P</span>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex justify-between items-start">
+                                    <div class="flex flex-col">
+                                        <span class="font-bold text-[14px] text-[#202124]">Palonia Hotel Group <span class="text-xs font-normal text-gray-500">&lt;experiences@palonia.com&gt;</span></span>
+                                        <span class="text-xs text-gray-500 flex items-center gap-1">to me <i class="fa-solid fa-caret-down text-[10px]"></i></span>
+                                    </div>
+                                    <div class="flex items-center gap-3 text-gray-500">
+                                        <span class="text-xs email-ts"></span>
+                                        <i class="fa-regular fa-star cursor-pointer hover:text-gray-700"></i>
+                                        <i id="replyIcon1" class="fa-solid fa-reply cursor-pointer hover:text-gray-700" title="Reply"></i>
+                                        <i class="fa-solid fa-ellipsis-vertical cursor-pointer hover:text-gray-700"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- BODY DEL EMAIL -->
+                        <div class="pl-0 md:pl-12 mt-4 pb-8 border-b border-gray-100 relative">
+                            <div class="bg-white clean-email border border-gray-200 rounded-lg shadow-sm overflow-hidden" style="max-width: 620px;">
+                                
+                                <!-- Cabecera Palonia & Status -->
+                                <div class="bg-[#1a222d] px-6 py-5 flex flex-col items-center justify-center border-b border-gray-100">
+                                    <img src="assets/palonia-primary-logo-white-01.png" alt="Palonia Hotel Group" class="h-14 object-contain mb-3">
+                                    <span class="bg-[#c5a059] text-white text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full shadow-sm">
+                                        my Palonia Benefits • Special Member
+                                    </span>
+                                </div>
+
+                                <div>
+                                    <!-- Imagen Hero (Resort Familiar GIF) respetando el tamaño y proporciones -->
+                                    <div class="relative bg-[#1a222d]">
+                                        <img src="assets/palonia_hero_image.png" alt="Summer Family Stay" class="w-full h-auto object-contain block">
+                                        <div class="absolute inset-0 bg-gradient-to-t from-[#1a222d] via-transparent to-transparent flex flex-col justify-end p-6 md:p-8 pointer-events-none">
+                                            <p class="text-white uppercase tracking-[0.2em] text-xs font-bold mb-2">Family Special</p>
+                                            <h1 class="text-white text-xl md:text-2xl font-light leading-tight drop-shadow-md">The summer is here.</h1>
+                                        </div>
+                                    </div>
+
+                                    <div class="p-6 md:p-8">
+                                        <!-- Botón Agente -->
+                                        <div class="text-center mb-8">
+                                            <span class="btn-agentforce">
+                                                <i class="fa-solid fa-sparkles text-[#c5a059]"></i> Palonia Agentforce
+                                            </span>
+                                        </div>
+
+                                        <p class="text-[15px] leading-relaxed text-gray-700 mb-6 font-medium">
+                                            <em>Hello, Sarah.</em><br><br>
+                                            As a <strong>Gold</strong> member of our <em>my Palonia Benefits</em> program, you deserve the most exclusive attention. We know that organizing holidays for the whole family can be a challenge, so we are putting our new AI personal assistant at your entire disposal to help our most loyal guests.
+                                        </p>
+                                        
+                                        <p class="text-[15px] leading-relaxed text-gray-700 mb-6 font-medium">
+                                            At Palonia Hotel Group we have designed resorts where the little ones live magical adventures, teenagers have their own space, and you, finally, can truly disconnect.
+                                        </p>
+
+                                        <!-- Call to Action Banner Agéntico -->
+                                        <div class="mt-8 relative bg-[#fdfaf5] border border-[#eaddca] rounded-xl p-8 text-center">
+                                            <div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#c5a059] text-white text-[11px] font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow-sm">
+                                                Up to 50% Off
+                                            </div>
+                                            <h3 class="text-[18px] font-bold text-[#1a222d] mb-3 leading-tight mt-2">
+                                                Let's design the perfect holidays together
+                                            </h3>
+                                            <p class="text-[14px] text-gray-600 mb-4">
+                                                <strong>Reply directly to this email</strong> telling me what you are looking for. Our Agentforce AI will find the ideal resort in seconds and, as a reward for booking through your assistant, will automatically apply the code <strong>10PALONIA26</strong> for up to <strong>50% off</strong> (plus an extra 5% if you are a large family).
+                                            </p>
+                                            <div class="bg-white border border-[#eaddca] p-3 rounded text-[13px] text-gray-500 shadow-inner italic inline-block w-full text-left">
+                                                "We are a family of 5 with teenagers and we want a hotel with sports activities near the beach..."
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- BOTÓN REPLY DE EMAIL 1 -->
+                            <div class="mt-4 flex gap-3" id="replyArea1">
+                                <button id="replyBtn1" class="border border-gray-300 rounded-full px-6 py-2 text-[#444746] font-medium text-[14px] hover:bg-[#f1f3f4] transition flex items-center gap-2 cursor-pointer shadow-sm">
+                                    <i class="fa-solid fa-reply"></i> Reply
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- COMPOSE 1: SARAH RESPONDE EXPONIENDO EL PROBLEMA -->
+                    <div class="email-item pt-4" id="compose1">
+                        <div class="flex items-start gap-3 mb-2">
+                            <div class="w-10 h-10 bg-blue-600 rounded-full text-white flex items-center justify-center font-bold text-lg shrink-0 z-10 shadow-sm">S</div>
+                            <div class="flex-1 border border-gray-200 rounded-xl shadow-lg bg-white overflow-hidden flex flex-col relative mt-1">
+                                <div class="px-4 py-2 border-b border-gray-100 flex items-center text-[13px] text-gray-500 bg-gray-50">
+                                    <i class="fa-solid fa-reply mr-2 text-gray-400"></i>
+                                    <span class="mr-2">To:</span>
+                                    <span class="bg-white px-2 py-0.5 rounded-md border border-gray-200 text-gray-700 flex items-center gap-1 shadow-sm">Palonia Hotel Group <i class="fa-solid fa-xmark text-[10px] ml-1"></i></span>
+                                </div>
+                                <div class="p-5 text-[14px] text-[#202124] min-h-[120px] outline-none bg-white leading-relaxed cursor-text" contenteditable="false">
+                                    <!-- Contenedor simulando escritura -->
+                                    <div id="composeBody1" class="hidden">
+                                        <p>Hi!</p>
+                                        <p class="mt-2">The truth is that looking for holidays for us is chaos. We are 5: my husband, me, and three kids with super different ages: <strong>one 16, one 14 and a little one who is 4</strong>.</p>
+                                        <p class="mt-2">It's super difficult to find a place where the two teens won't get bored (and they need <strong>high-speed Wi-Fi connection</strong> for their things!), and the 4-year-old has adapted entertainment. Also, we are a very active family and we try to lead a <strong>healthy lifestyle</strong>, so we would like to have good gym facilities or organized activities, even though we also want to relax.</p>
+                                        <p class="mt-3">We want to go in August, preferably staying in Spain (coast or islands). Do you have any hotel that fits this?</p>
+                                    </div>
+                                </div>
+                                <div class="px-4 py-3 bg-gray-50 flex items-center justify-between border-t border-gray-100">
+                                    <button id="sendBtn1" class="bg-[#0b57d0] hover:bg-[#0842a0] text-white px-6 py-2 rounded-full font-medium text-sm transition shadow-sm mr-2 cursor-pointer">Send</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- EMAIL 2: PREGUNTA ENVIADA -->
+                    <div class="email-item pt-4" id="email2">
+                        <div class="flex items-start gap-3 mb-2">
+                            <div class="w-10 h-10 bg-blue-600 rounded-full text-white flex items-center justify-center font-bold text-lg shrink-0">S</div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex justify-between items-start">
+                                    <div class="flex flex-col">
+                                        <span class="font-bold text-[14px] text-[#202124]">Sarah Mitchell <span class="text-xs font-normal text-gray-500">&lt;sarah.mitchell@gmail.com&gt;</span></span>
+                                    </div>
+                                    <div class="flex items-center gap-3 text-gray-500">
+                                        <span class="text-xs email-ts"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="pl-0 md:pl-12 mt-2 pb-6 border-b border-gray-100">
+                            <div class="text-[14px] text-[#202124] leading-relaxed max-w-3xl">
+                                <p>Hi!</p>
+                                <p class="mt-2">The truth is that looking for holidays for us is chaos. We are 5: my husband, me, and three kids with super different ages: <strong>one 16, one 14 and a little one who is 4</strong>.</p>
+                                <p class="mt-2">It's super difficult to find a place where the two teens won't get bored (and they need <strong>high-speed Wi-Fi connection</strong> for their things!), and the 4-year-old has adapted entertainment. Also, we are a very active family and we try to lead a <strong>healthy lifestyle</strong>, so we would like to have good gym facilities or organized activities, even though we also want to relax.</p>
+                                <p class="mt-3">We want to go in August, preferably staying in Spain (coast or islands). Do you have any hotel that fits this?</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- EMAIL 3: RESPUESTA IA Palonia CON OPCIONES POR EDADES -->
+                    <div class="email-item pt-4" id="email3">
+                        <div class="flex items-start gap-3 mb-2">
+                            <div class="w-10 h-10 border border-gray-200 rounded-full bg-[#1a222d] flex items-center justify-center shrink-0">
+                                <span class="text-white font-bold text-xs">P</span>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex justify-between items-start">
+                                    <div class="flex flex-col">
+                                        <span class="font-bold text-[14px] text-[#202124]">Palonia Agentforce <span class="text-xs font-normal text-gray-500">&lt;assistant@palonia.com&gt;</span></span>
+                                    </div>
+                                    <div class="flex items-center gap-3 text-gray-500">
+                                        <span class="text-xs email-ts"></span>
+                                        <i id="replyIcon2" class="fa-solid fa-reply cursor-pointer hover:text-gray-700" title="Reply"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="pl-0 md:pl-12 mt-2 pb-6 border-b border-gray-100 relative">
+                            <div class="text-[14px] text-[#202124] leading-relaxed max-w-3xl">
+                                <p>Hi Sarah! I perfectly understand the challenge. With such different ages (16, 14, and 4), the key is to choose a resort with "age zoning" so everyone has their ideal space simultaneously.</p>
+                                
+                                <p class="mt-3">I've checked availability for a family of 5 in Spain and I propose two resorts where <strong>the two teens will have their independence in the spectacular Palonia FUN Lounge, and the little one will be fascinated with our mascot at the Palonia Kids Club:</strong></p>
+
+                                <!-- RECOMENDACIONES IA Palonia (Familias) -->
+                                <div class="flex flex-col lg:flex-row gap-4 py-4 mb-2">
+                                    
+                                    <!-- Card 1 -->
+                                    <div class="flex-1 bg-white border border-gray-200 hover:border-[#c5a059] transition rounded-xl overflow-hidden shadow-sm flex flex-col">
+                                        <div class="h-32 bg-gray-200 relative">
+                                            <img src="assets/hotel_1.png" alt="[Imagen Palonia Punta Umbría]" class="w-full h-full object-cover">
+                                        </div>
+                                        <div class="p-4 flex-1 flex flex-col">
+                                            <h4 class="font-bold text-[#1a222d] text-[15px] leading-tight">Palonia Beach Resort</h4>
+                                            <p class="text-[11px] text-[#c5a059] mt-1 font-bold uppercase tracking-wide">The Family Paradise</p>
+                                            <p class="text-[12px] text-gray-700 mt-2 leading-relaxed flex-1">It's our family resort par excellence. 4,000m² of pools, <strong>free Premium Wi-Fi</strong>, Princess Laboratory for the 4-year-old, and incredible facilities like the <strong>Palonia FUN Lounge (DJ, video games and chill zone)</strong> for those over 13.</p>
+                                        </div>
+                                    </div>
+
+                                    <!-- Card 2 -->
+                                    <div class="flex-1 bg-white border border-gray-200 hover:border-[#c5a059] transition rounded-xl overflow-hidden shadow-sm flex flex-col">
+                                        <div class="h-32 bg-gray-200 relative">
+                                            <img src="assets/hotel_2.png" alt="[Imagen Palonia 2]" class="w-full h-full object-cover">
+                                        </div>
+                                        <div class="p-4 flex-1 flex flex-col">
+                                            <h4 class="font-bold text-[#1a222d] text-[15px] leading-tight">Palonia Islands Active Resort</h4>
+                                            <p class="text-[11px] text-[#c5a059] mt-1 font-bold uppercase tracking-wide">Islands • Active Families</p>
+                                            <p class="text-[12px] text-gray-700 mt-2 leading-relaxed flex-1">Perfect for the 14 and 16-year-olds with its "Active" sports zone, climbing wall and Olympic pools, while the little one has her own water park and miniclub.</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <p class="mt-2 font-semibold text-[#1a222d]">Which vibe appeals to you more?</p>
+                            </div>
+                            
+                            <div class="mt-4 flex gap-3" id="replyArea2">
+                                <button id="replyBtn2" class="border border-gray-300 rounded-full px-6 py-2 text-[#444746] font-medium text-[14px] hover:bg-[#f1f3f4] transition flex items-center gap-2 cursor-pointer shadow-sm">
+                                    <i class="fa-solid fa-reply"></i> Reply
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- COMPOSE 2: SARAH ELIGE Y PREGUNTA POR ALOJAMIENTO/DEPORTE -->
+                    <div class="email-item pt-4" id="compose2">
+                        <div class="flex items-start gap-3 mb-2">
+                            <div class="w-10 h-10 bg-blue-600 rounded-full text-white flex items-center justify-center font-bold text-lg shrink-0 z-10 shadow-sm">S</div>
+                            <div class="flex-1 border border-gray-200 rounded-xl shadow-lg bg-white overflow-hidden flex flex-col relative mt-1">
+                                <div class="px-4 py-2 border-b border-gray-100 flex items-center text-[13px] text-gray-500 bg-gray-50">
+                                    <i class="fa-solid fa-reply mr-2 text-gray-400"></i>
+                                    <span class="mr-2">To:</span>
+                                    <span class="bg-white px-2 py-0.5 rounded-md border border-gray-200 text-gray-700 flex items-center gap-1 shadow-sm">Palonia Agentforce <i class="fa-solid fa-xmark text-[10px] ml-1"></i></span>
+                                </div>
+                                <div class="p-5 text-[14px] text-[#202124] min-h-[100px] outline-none bg-white leading-relaxed cursor-text" contenteditable="false">
+                                    <div id="composeBody2" class="hidden">
+                                        <p>We are very convinced by the <strong>Palonia Beach Resort</strong> because of the age separation (and they are going to love the Palonia FUN Lounge)!</p>
+                                        <p class="mt-2">But I have a couple of doubts before booking: <strong>how do 5 people sleep without being all squeezed into a single room?</strong></p>
+                                        <p class="mt-2">And on the other hand, knowing that we like doing sports, <strong>what options for guided classes or fitness facilities do we adults have?</strong></p>
+                                    </div>
+                                </div>
+                                <div class="px-4 py-3 bg-gray-50 flex items-center justify-between border-t border-gray-100">
+                                    <button id="sendBtn2" class="bg-[#0b57d0] hover:bg-[#0842a0] text-white px-6 py-2 rounded-full font-medium text-sm transition shadow-sm mr-2 cursor-pointer">Send</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- EMAIL 4: PREGUNTA ENVIADA -->
+                    <div class="email-item pt-4" id="email4">
+                        <div class="flex items-start gap-3 mb-2">
+                            <div class="w-10 h-10 bg-blue-600 rounded-full text-white flex items-center justify-center font-bold text-lg shrink-0">S</div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex justify-between items-start">
+                                    <div class="flex flex-col">
+                                        <span class="font-bold text-[14px] text-[#202124]">Sarah Mitchell <span class="text-xs font-normal text-gray-500">&lt;sarah.mitchell@gmail.com&gt;</span></span>
+                                    </div>
+                                    <div class="flex items-center gap-3 text-gray-500">
+                                        <span class="text-xs email-ts"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="pl-0 md:pl-12 mt-2 pb-6 border-b border-gray-100">
+                            <div class="text-[14px] text-[#202124] leading-relaxed max-w-3xl">
+                                <p>We are very convinced by the <strong>Palonia Beach Resort</strong> because of the age separation (and they are going to love the Palonia FUN Lounge)!</p>
+                                <p class="mt-2">But I have a couple of doubts before booking: <strong>how do 5 people sleep without being all squeezed into a single room?</strong></p>
+                                <p class="mt-2">And on the other hand, knowing that we like doing sports, <strong>what options for guided classes or fitness facilities do we adults have?</strong></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- EMAIL 4.1: RESPUESTA IA (RESUELVE DUDAS Y PREGUNTA POR FECHAS/RÉGIMEN) -->
+                    <div class="email-item pt-4" id="email4_1">
+                        <div class="flex items-start gap-3 mb-2">
+                            <div class="w-10 h-10 border border-gray-200 rounded-full bg-[#1a222d] flex items-center justify-center shrink-0">
+                                <span class="text-white font-bold text-xs">P</span>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex justify-between items-start">
+                                    <div class="flex flex-col">
+                                        <span class="font-bold text-[14px] text-[#202124]">Palonia Agentforce <span class="text-xs font-normal text-gray-500">&lt;assistant@palonia.com&gt;</span></span>
+                                    </div>
+                                    <div class="flex items-center gap-3 text-gray-500">
+                                        <span class="text-xs email-ts"></span>
+                                        <i id="replyIcon4_1" class="fa-solid fa-reply cursor-pointer hover:text-gray-700" title="Reply"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="pl-0 md:pl-12 mt-2 pb-6 border-b border-gray-100 relative">
+                            <div class="text-[14px] text-[#202124] leading-relaxed max-w-3xl">
+                                <p>Very common doubts with an easy solution, Sarah.</p>
+                                
+                                <ul class="mt-3 space-y-3">
+                                    <li><i class="fa-solid fa-door-open text-[#c5a059] w-5"></i> <strong>Space:</strong> For families of 5 we have the <strong>Premium Family Room</strong>. They are actually two independent rooms connected by an inner door (with two full bathrooms). Privacy for you and space for them.</li>
+                                    <li><i class="fa-solid fa-dumbbell text-[#c5a059] w-5"></i> <strong>Healthy Life:</strong> You have free access to our equipped <em>Fitness</em> center, paddle tennis courts and the daily <em>Fit & Active</em> program with <strong>guided classes (Spinning, Pilates, Yoga)</strong>.</li>
+                                </ul>
+
+                                <p class="mt-4">To be able to give you a real idea of availability and prepare a first no-obligation proposal, I would just need to refine a couple of details:</p>
+
+                                <div class="mt-4 p-5 bg-[#fdfaf5] border border-[#eaddca] rounded-xl shadow-sm">
+                                    <p class="mb-3 text-[#1a222d]"><strong>1. Estimated dates:</strong> Do you have specific dates in mind for the trip and how many days would you like to get away?</p>
+                                    <p class="text-[#1a222d]"><strong>2. Meal preferences:</strong> Some families prefer the flexibility of <strong>Half Board</strong> to go out and explore the area, and others look for total disconnection with our <strong>All-Inclusive</strong> (very practical and comfortable when traveling with teens). What fits you best?</p>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-4 flex gap-3" id="replyArea4_1">
+                                <button id="replyBtn4_1" class="border border-gray-300 rounded-full px-6 py-2 text-[#444746] font-medium text-[14px] hover:bg-[#f1f3f4] transition flex items-center gap-2 cursor-pointer shadow-sm">
+                                    <i class="fa-solid fa-reply"></i> Reply
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- COMPOSE 2.5: SARAH RESPONDE FECHAS Y RÉGIMEN -->
+                    <div class="email-item pt-4" id="compose2_5">
+                        <div class="flex items-start gap-3 mb-2">
+                            <div class="w-10 h-10 bg-blue-600 rounded-full text-white flex items-center justify-center font-bold text-lg shrink-0 z-10 shadow-sm">S</div>
+                            <div class="flex-1 border border-gray-200 rounded-xl shadow-lg bg-white overflow-hidden flex flex-col relative mt-1">
+                                <div class="px-4 py-2 border-b border-gray-100 flex items-center text-[13px] text-gray-500 bg-gray-50">
+                                    <i class="fa-solid fa-reply mr-2 text-gray-400"></i>
+                                    <span class="mr-2">To:</span>
+                                    <span class="bg-white px-2 py-0.5 rounded-md border border-gray-200 text-gray-700 flex items-center gap-1 shadow-sm">Palonia Agentforce <i class="fa-solid fa-xmark text-[10px] ml-1"></i></span>
+                                </div>
+                                <div class="p-5 text-[14px] text-[#202124] min-h-[80px] outline-none bg-white leading-relaxed cursor-text" contenteditable="false">
+                                    <div id="composeBody2_5" class="hidden">
+                                        <p>The connected rooms are an absolute relief! And I'm taking note of the Pilates classes.</p>
+                                        <p class="mt-2">Regarding meals, definitely <strong>All-Inclusive</strong>. With three teens/kids we don't want to be doing math every time they ask for something to snack or drink.</p>
+                                        <p class="mt-2">The dates would be from <strong>August 10th to 17th (7 nights)</strong>.</p>
+                                    </div>
+                                </div>
+                                <div class="px-4 py-3 bg-gray-50 flex items-center justify-between border-t border-gray-100">
+                                    <button id="sendBtn2_5" class="bg-[#0b57d0] hover:bg-[#0842a0] text-white px-6 py-2 rounded-full font-medium text-sm transition shadow-sm mr-2 cursor-pointer">Send</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- EMAIL 4.2: RESPUESTA FECHAS ENVIADA -->
+                    <div class="email-item pt-4" id="email4_2">
+                        <div class="flex items-start gap-3 mb-2">
+                            <div class="w-10 h-10 bg-blue-600 rounded-full text-white flex items-center justify-center font-bold text-lg shrink-0">S</div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex justify-between items-start">
+                                    <div class="flex flex-col">
+                                        <span class="font-bold text-[14px] text-[#202124]">Sarah Mitchell <span class="text-xs font-normal text-gray-500">&lt;sarah.mitchell@gmail.com&gt;</span></span>
+                                    </div>
+                                    <div class="flex items-center gap-3 text-gray-500">
+                                        <span class="text-xs email-ts"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="pl-0 md:pl-12 mt-2 pb-6 border-b border-gray-100">
+                            <div class="text-[14px] text-[#202124] leading-relaxed max-w-3xl">
+                                <p>The connected rooms are an absolute relief! And I'm taking note of the Pilates classes.</p>
+                                <p class="mt-2">Regarding meals, definitely <strong>All-Inclusive</strong>. With three teens/kids we don't want to be doing math every time they ask for something to snack or drink.</p>
+                                <p class="mt-2">The dates would be from <strong>August 10th to 17th (7 nights)</strong>.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- EMAIL 4.3: RESPUESTA IA (UPSELLING + DESCUENTO APLICADO) -->
+                    <div class="email-item pt-4" id="email4_3">
+                        <div class="flex items-start gap-3 mb-2">
+                            <div class="w-10 h-10 border border-gray-200 rounded-full bg-[#1a222d] flex items-center justify-center shrink-0">
+                                <span class="text-white font-bold text-xs">P</span>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex justify-between items-start">
+                                    <div class="flex flex-col">
+                                        <span class="font-bold text-[14px] text-[#202124]">Palonia Agentforce <span class="text-xs font-normal text-gray-500">&lt;assistant@palonia.com&gt;</span></span>
+                                    </div>
+                                    <div class="flex items-center gap-3 text-gray-500">
+                                        <span class="text-xs email-ts"></span>
+                                        <i id="replyIcon4_3" class="fa-solid fa-reply cursor-pointer hover:text-gray-700" title="Reply"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="pl-0 md:pl-12 mt-2 pb-6 border-b border-gray-100 relative">
+                            <div class="text-[14px] text-[#202124] leading-relaxed max-w-3xl">
+                                <p>Noted! I have tentatively blocked your dates. As promised, I have automatically applied the code <strong>10PALONIA26</strong> (-10%). Additionally, since you mentioned you are a family of 5, I have added the <strong>5% Large Family discount</strong>. This guarantees the maximum promotion applicable for this resort during the high season in August. Here is the budget for your stay:</p>
+
+                                <div class="bg-gray-50 border border-gray-200 rounded-xl p-5 my-4 max-w-lg">
+                                    <div class="flex justify-between items-start mb-3">
+                                        <span class="text-sm text-gray-600">Dates & Guests</span>
+                                        <span class="text-sm font-semibold text-right">August 10th to 17th (7 Nights)<br>2 Adults, 3 Children (16, 14, 4)</span>
+                                    </div>
+                                    <div class="flex justify-between items-center mb-3">
+                                        <span class="text-sm text-gray-600">Accommodation</span>
+                                        <span class="text-sm font-semibold text-right">Premium Family (Connected)</span>
+                                    </div>
+                                    <div class="flex justify-between items-center mb-3">
+                                        <span class="text-sm text-gray-600">Board</span>
+                                        <span class="text-sm font-semibold">All-Inclusive (Standard)</span>
+                                    </div>
+                                    <div class="flex justify-between items-center pt-3 border-t border-gray-200 mt-2">
+                                        <div class="flex flex-col">
+                                            <span class="font-bold text-[#1a222d]">Total Stay</span>
+                                            <span class="text-[10px] text-[#16a34a] font-bold uppercase tracking-wider mt-1">10PALONIA26 Applied (-10%)</span>
+                                            <span class="text-[10px] text-[#16a34a] font-bold uppercase tracking-wider">Large Family Applied (-5%)</span>
+                                        </div>
+                                        <div class="text-right flex items-center gap-2 mt-1">
+                                            <span class="text-sm line-through text-gray-400">€5,833</span>
+                                            <span class="text-xl font-black text-[#1a222d]">€4,958</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <a href="agenticwebPaloniaEN.html" target="_blank" rel="noopener" id="viewWebBtn" class="w-full mt-4 bg-[#1a222d] hover:bg-[#2c384a] text-white font-bold py-2.5 rounded-lg flex justify-center items-center gap-2 transition cursor-pointer text-xs tracking-wide no-underline">
+                                        <i class="fa-solid fa-arrow-up-right-from-square"></i> VIEW DETAILS ON THE WEB
+                                    </a>
+                                </div>
+                                
+                                <p class="mt-4">Knowing you are a very active family that values healthy options, I propose adding these <strong>two exclusive add-ons</strong> to your booking for a truly Premium experience:</p>
+
+                                <div class="mt-4 space-y-3 bg-[#fdfaf5] p-5 border border-[#eaddca] rounded-lg">
+                                    <div class="flex justify-between items-center border-b border-[#eaddca] pb-3">
+                                        <div>
+                                            <strong class="text-[#1a222d]">1. Upgrade to Premium All-Inclusive</strong>
+                                            <p class="text-xs text-gray-600 mt-1">Adds to the standard All-Inclusive daily access to à la carte restaurants (Italian, American, Andalusian) featuring <em>Healthy</em> corners and natural smoothies. Also includes daily minibar restock.</p>
+                                        </div>
+                                        <span class="font-bold text-[#c5a059] ml-4 shrink-0">+€120/day</span>
+                                    </div>
+                                    <div class="flex justify-between items-center pt-2">
+                                        <div>
+                                            <strong class="text-[#1a222d]">2. Marshlands Excursion (Bikes/Kayak) + Childcare</strong>
+                                            <p class="text-xs text-gray-600 mt-1">A 3-hour guided sports route for you and the teens. Since it's an intense activity, I've included a special playroom/babysitting service at the Palonia Kids Club so your 4-year-old can have fun while you relax.</p>
+                                        </div>
+                                        <span class="font-bold text-[#c5a059] ml-4 shrink-0">+€280 total</span>
+                                    </div>
+                                </div>
+
+                                <p class="mt-4">Would you like me to include any of these options in the final budget?</p>
+                            </div>
+                            
+                            <div class="mt-4 flex gap-3" id="replyArea4_3">
+                                <button id="replyBtn4_3" class="border border-gray-300 rounded-full px-6 py-2 text-[#444746] font-medium text-[14px] hover:bg-[#f1f3f4] transition flex items-center gap-2 cursor-pointer shadow-sm">
+                                    <i class="fa-solid fa-reply"></i> Reply
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- COMPOSE 2.7: SARAH DUDA DE LOS ANCILLARIES -->
+                    <div class="email-item pt-4" id="compose2_7">
+                        <div class="flex items-start gap-3 mb-2">
+                            <div class="w-10 h-10 bg-blue-600 rounded-full text-white flex items-center justify-center font-bold text-lg shrink-0 z-10 shadow-sm">S</div>
+                            <div class="flex-1 border border-gray-200 rounded-xl shadow-lg bg-white overflow-hidden flex flex-col relative mt-1">
+                                <div class="px-4 py-2 border-b border-gray-100 flex items-center text-[13px] text-gray-500 bg-gray-50">
+                                    <i class="fa-solid fa-reply mr-2 text-gray-400"></i>
+                                    <span class="mr-2">To:</span>
+                                    <span class="bg-white px-2 py-0.5 rounded-md border border-gray-200 text-gray-700 flex items-center gap-1 shadow-sm">Palonia Agentforce <i class="fa-solid fa-xmark text-[10px] ml-1"></i></span>
+                                </div>
+                                <div class="p-5 text-[14px] text-[#202124] min-h-[80px] outline-none bg-white leading-relaxed cursor-text" contenteditable="false">
+                                    <div id="composeBody2_7" class="hidden">
+                                        <p>It sounds phenomenal, but the truth is I have some doubts before confirming everything.</p>
+                                        <p class="mt-2">The <strong>Premium All-Inclusive</strong> looks good, but is it really worth the difference for the kids? What kind of à la carte restaurants does it include exactly?</p>
+                                        <p class="mt-2">And about the <strong>Marshlands Excursion</strong>, I'm a bit worried if it will be too hard or if the teens will be safe in the kayak. I would need a bit more information before deciding on these add-ons.</p>
+                                    </div>
+                                </div>
+                                <div class="px-4 py-3 bg-gray-50 flex items-center justify-between border-t border-gray-100">
+                                    <button id="sendBtn2_7" class="bg-[#0b57d0] hover:bg-[#0842a0] text-white px-6 py-2 rounded-full font-medium text-sm transition shadow-sm mr-2 cursor-pointer">Send</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- EMAIL 4.4: DUDAS ENVIADAS -->
+                    <div class="email-item pt-4" id="email4_4">
+                        <div class="flex items-start gap-3 mb-2">
+                            <div class="w-10 h-10 bg-blue-600 rounded-full text-white flex items-center justify-center font-bold text-lg shrink-0">S</div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex justify-between items-start">
+                                    <div class="flex flex-col">
+                                        <span class="font-bold text-[14px] text-[#202124]">Sarah Mitchell <span class="text-xs font-normal text-gray-500">&lt;sarah.mitchell@gmail.com&gt;</span></span>
+                                    </div>
+                                    <div class="flex items-center gap-3 text-gray-500">
+                                        <span class="text-xs">2:45 PM (10 minutes ago)</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="pl-0 md:pl-12 mt-2 pb-6 border-b border-gray-100">
+                            <div class="text-[14px] text-[#202124] leading-relaxed max-w-3xl">
+                                <p>It sounds phenomenal, but the truth is I have some doubts before confirming everything.</p>
+                                <p class="mt-2">The <strong>Premium All-Inclusive</strong> looks good, but is it really worth the difference for the kids? What kind of à la carte restaurants does it include exactly?</p>
+                                <p class="mt-2">And about the <strong>Marshlands Excursion</strong>, I'm a bit worried if it will be too hard or if the teens will be safe in the kayak. I would need a bit more information before deciding on these add-ons.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- EMAIL 4.5: IA PROPONE REUNIÓN CON EXPERTO -->
+                    <div class="email-item pt-4" id="email4_5">
+                        <div class="flex items-start gap-3 mb-2">
+                            <div class="w-10 h-10 border border-gray-200 rounded-full bg-[#1a222d] flex items-center justify-center shrink-0">
+                                <span class="text-white font-bold text-xs">P</span>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex justify-between items-start">
+                                    <div class="flex flex-col">
+                                        <span class="font-bold text-[14px] text-[#202124]">Palonia Agentforce <span class="text-xs font-normal text-gray-500">&lt;assistant@palonia.com&gt;</span></span>
+                                    </div>
+                                    <div class="flex items-center gap-3 text-gray-500">
+                                        <span class="text-xs">2:46 PM (9 minutes ago)</span>
+                                        <i id="replyIcon4_5" class="fa-solid fa-reply cursor-pointer hover:text-gray-700" title="Reply"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="pl-0 md:pl-12 mt-2 pb-6 border-b border-gray-100 relative">
+                            <div class="text-[14px] text-[#202124] leading-relaxed max-w-3xl">
+                                <p>It's completely normal that you have those doubts, Sarah! Being such an important trip for the 5 of you, we want you to be 100% sure of every detail. There's no rush to decide right now.</p>
+
+                                <p class="mt-4">To make the most of the destination and resolve these questions live, there is nothing better than a local expert. I have checked availability with Marcos, our advisor specialized in family holidays.</p>
+                                
+                                <p class="mt-2">In a brief video call via Google Meet he will show you the menu of the Premium restaurants, detail the safety and points of interest of the kayak route, and give you an <strong>interactive virtual tour</strong> of the hotel and your rooms.</p>
+                                
+                                <p class="mt-4 font-semibold text-[#1a222d]">These are the slots he has available this week. Shall I book one for you to talk to him?</p>
+
+                                <div class="mt-3 flex gap-3 flex-wrap">
+                                    <div class="border border-[#c5a059] bg-white text-[#1a222d] px-4 py-2 rounded-md text-[13px] font-medium hover:bg-[#fdfaf5] cursor-pointer transition flex items-center gap-2">
+                                        <i class="fa-regular fa-calendar text-[#c5a059]"></i> Tomorrow, 6:00 PM
+                                    </div>
+                                    <div class="border border-[#c5a059] bg-white text-[#1a222d] px-4 py-2 rounded-md text-[13px] font-medium hover:bg-[#fdfaf5] cursor-pointer transition flex items-center gap-2">
+                                        <i class="fa-regular fa-calendar text-[#c5a059]"></i> Thursday, 10:00 AM
+                                    </div>
+                                    <div class="border border-[#c5a059] bg-white text-[#1a222d] px-4 py-2 rounded-md text-[13px] font-medium hover:bg-[#fdfaf5] cursor-pointer transition flex items-center gap-2">
+                                        <i class="fa-regular fa-calendar text-[#c5a059]"></i> Thursday, 4:30 PM
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-4 flex gap-3" id="replyArea4_5">
+                                <button id="replyBtn4_5" class="border border-gray-300 rounded-full px-6 py-2 text-[#444746] font-medium text-[14px] hover:bg-[#f1f3f4] transition flex items-center gap-2 cursor-pointer shadow-sm">
+                                    <i class="fa-solid fa-reply"></i> Reply
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- COMPOSE 2.8: SARAH ACEPTA LA REUNIÓN -->
+                    <div class="email-item pt-4" id="compose2_8">
+                        <div class="flex items-start gap-3 mb-2">
+                            <div class="w-10 h-10 bg-blue-600 rounded-full text-white flex items-center justify-center font-bold text-lg shrink-0 z-10 shadow-sm">S</div>
+                            <div class="flex-1 border border-gray-200 rounded-xl shadow-lg bg-white overflow-hidden flex flex-col relative mt-1">
+                                <div class="px-4 py-2 border-b border-gray-100 flex items-center text-[13px] text-gray-500 bg-gray-50">
+                                    <i class="fa-solid fa-reply mr-2 text-gray-400"></i>
+                                    <span class="mr-2">To:</span>
+                                    <span class="bg-white px-2 py-0.5 rounded-md border border-gray-200 text-gray-700 flex items-center gap-1 shadow-sm">Palonia Agentforce <i class="fa-solid fa-xmark text-[10px] ml-1"></i></span>
+                                </div>
+                                <div class="p-5 text-[14px] text-[#202124] min-h-[80px] outline-none bg-white leading-relaxed cursor-text" contenteditable="false">
+                                    <div id="composeBody2_8" class="hidden">
+                                        <p>Ah, that sounds like a fantastic idea!</p>
+                                        <p class="mt-2">Talking to someone who knows the hotel in detail and can show us everything on video will help us a lot to decide which extras interest us the most. The slot <strong>tomorrow at 6:00 PM</strong> works great for us.</p>
+                                    </div>
+                                </div>
+                                <div class="px-4 py-3 bg-gray-50 flex items-center justify-between border-t border-gray-100">
+                                    <button id="sendBtn2_8" class="bg-[#0b57d0] hover:bg-[#0842a0] text-white px-6 py-2 rounded-full font-medium text-sm transition shadow-sm mr-2 cursor-pointer">Send</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- EMAIL 4.6: CONFIRMACIÓN DE REUNIÓN ENVIADA -->
+                    <div class="email-item pt-4" id="email4_6">
+                        <div class="flex items-start gap-3 mb-2">
+                            <div class="w-10 h-10 bg-blue-600 rounded-full text-white flex items-center justify-center font-bold text-lg shrink-0">S</div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex justify-between items-start">
+                                    <div class="flex flex-col">
+                                        <span class="font-bold text-[14px] text-[#202124]">Sarah Mitchell <span class="text-xs font-normal text-gray-500">&lt;sarah.mitchell@gmail.com&gt;</span></span>
+                                    </div>
+                                    <div class="flex items-center gap-3 text-gray-500">
+                                        <span class="text-xs">2:48 PM (7 minutes ago)</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="pl-0 md:pl-12 mt-2 pb-6 border-b border-gray-100">
+                            <div class="text-[14px] text-[#202124] leading-relaxed max-w-3xl">
+                                <p>Ah, that sounds like a fantastic idea!</p>
+                                <p class="mt-2">Talking to someone who knows the hotel in detail and can show us everything on video will help us a lot to decide which extras interest us the most. The slot <strong>tomorrow at 6:00 PM</strong> works great for us.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- EMAIL 5: IA ENVÍA RESUMEN BORRADOR Y PIDE PERMISO WHATSAPP -->
+                    <div class="email-item pt-4" id="email5">
+                        <div class="flex items-start gap-3 mb-2">
+                            <div class="w-10 h-10 border border-gray-200 rounded-full bg-[#1a222d] flex items-center justify-center shrink-0">
+                                <span class="text-white font-bold text-xs">P</span>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex justify-between items-start">
+                                    <div class="flex flex-col">
+                                        <span class="font-bold text-[14px] text-[#202124]">Palonia Agentforce <span class="text-xs font-normal text-gray-500">&lt;assistant@palonia.com&gt;</span></span>
+                                    </div>
+                                    <div class="flex items-center gap-3 text-gray-500">
+                                        <span class="text-xs">2:50 PM (5 minutes ago)</span>
+                                        <i id="replyIcon5" class="fa-solid fa-reply cursor-pointer hover:text-gray-700" title="Reply"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="pl-0 md:pl-12 mt-2 pb-6 border-b border-gray-100 relative">
+                            <div class="text-[14px] text-[#202124] leading-relaxed max-w-3xl">
+                                <p>Great, Sarah! 🗓️ <strong>I have scheduled your video call for tomorrow at 6:00 PM.</strong> I will send you the Google Meet invitation in a separate email.</p>
+                                
+                                <p class="mt-3">To get some work done ahead of the meeting, I've prepared a first draft with your dates and pre-selected extras. This way you'll have a base to work on and outline the details with Marcos.</p>
+
+                                <div class="bg-gray-50 border border-gray-200 rounded-xl p-6 my-5 max-w-lg">
+                                    <div class="flex justify-between items-start border-b border-gray-200 pb-3 mb-3">
+                                        <div>
+                                            <p class="font-bold text-[#1a222d] text-lg">Palonia Beach Resort</p>
+                                            <p class="text-xs text-[#c5a059] uppercase font-bold tracking-widest mt-1">Family Special</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="flex justify-between items-center mb-2">
+                                        <p class="text-sm">Dates & Guests</p>
+                                        <p class="text-sm font-semibold text-right">August 10th to 17th (7 Nights)<br>2 Adults, 3 Children (16, 14, 4)</p>
+                                    </div>
+                                    <div class="flex justify-between items-center mb-2 text-gray-600">
+                                        <p class="text-sm">Room</p>
+                                        <p class="text-sm">Premium Family (Connected)</p>
+                                    </div>
+                                    <div class="flex justify-between items-center mb-4 text-gray-600">
+                                        <p class="text-sm">Board & Extras</p>
+                                        <p class="text-sm text-right">Premium All-Inclusive<br>+ Excursion & Childcare</p>
+                                    </div>
+                                    
+                                    <button class="w-full bg-[#1a222d] hover:bg-[#2c384a] text-white font-bold py-3 rounded-lg flex justify-center items-center gap-2 transition cursor-pointer text-sm tracking-wide">
+                                        VIEW BUDGET
+                                    </button>
+                                </div>
+
+                                <p class="mt-4">To make tomorrow's video call as smooth as possible, do you confirm your permission to contact you on the WhatsApp associated with your My Palonia profile (+34 600-***-***)? This way Marcos will be able to send you an appointment reminder with the direct link and, in case any unforeseen event arises, you'll be able to easily reschedule the meeting there.</p>
+                                
+                                <div class="mt-4 p-5 bg-[#fdfaf5] border border-[#eaddca] rounded-xl shadow-sm flex items-start gap-3">
+                                    <i class="fa-brands fa-whatsapp text-[#16a34a] text-xl mt-1"></i>
+                                    <div>
+                                        <strong class="text-[#1a222d] text-[15px]">WhatsApp Contact</strong>
+                                        <p class="mt-1 text-[13px] text-[#1a222d]">Reply to this email with a simple "OK" to give us your consent.</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- BOTÓN REPLY DE EMAIL 5 -->
+                            <div class="mt-4 flex gap-3" id="replyArea5">
+                                <button id="replyBtn5" class="border border-gray-300 rounded-full px-6 py-2 text-[#444746] font-medium text-[14px] hover:bg-[#f1f3f4] transition flex items-center gap-2 cursor-pointer shadow-sm">
+                                    <i class="fa-solid fa-reply"></i> Reply
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- COMPOSE 3: SARAH DA EL OK A WHATSAPP -->
+                    <div class="email-item pt-4" id="compose3">
+                        <div class="flex items-start gap-3 mb-2">
+                            <div class="w-10 h-10 bg-blue-600 rounded-full text-white flex items-center justify-center font-bold text-lg shrink-0 z-10 shadow-sm">S</div>
+                            <div class="flex-1 border border-gray-200 rounded-xl shadow-lg bg-white overflow-hidden flex flex-col relative mt-1">
+                                <div class="px-4 py-2 border-b border-gray-100 flex items-center text-[13px] text-gray-500 bg-gray-50">
+                                    <i class="fa-solid fa-reply mr-2 text-gray-400"></i>
+                                    <span class="mr-2">To:</span>
+                                    <span class="bg-white px-2 py-0.5 rounded-md border border-gray-200 text-gray-700 flex items-center gap-1 shadow-sm">Palonia Agentforce <i class="fa-solid fa-xmark text-[10px] ml-1"></i></span>
+                                </div>
+                                <div class="p-5 text-[14px] text-[#202124] min-h-[80px] outline-none bg-white leading-relaxed cursor-text" contenteditable="false">
+                                    <div id="composeBody3" class="hidden">
+                                        <p>Everything looks great!</p>
+                                        <p class="mt-2">OK, you have my consent to text me on WhatsApp. I find it super practical to have the link and the reminder there just in case. We'll talk tomorrow with Marcos to finish closing everything.</p>
+                                    </div>
+                                </div>
+                                <div class="px-4 py-3 bg-gray-50 flex items-center justify-between border-t border-gray-100">
+                                    <button id="sendBtn3" class="bg-[#0b57d0] hover:bg-[#0842a0] text-white px-6 py-2 rounded-full font-medium text-sm transition shadow-sm mr-2 cursor-pointer">Send</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- EMAIL 7: SARAH OK WHATSAPP ENVIADO -->
+                    <div class="email-item pt-4" id="email7">
+                        <div class="flex items-start gap-3 mb-2">
+                            <div class="w-10 h-10 bg-blue-600 rounded-full text-white flex items-center justify-center font-bold text-lg shrink-0">S</div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex justify-between items-start">
+                                    <div class="flex flex-col">
+                                        <span class="font-bold text-[14px] text-[#202124]">Sarah Mitchell <span class="text-xs font-normal text-gray-500">&lt;sarah.mitchell@gmail.com&gt;</span></span>
+                                    </div>
+                                    <div class="flex items-center gap-3 text-gray-500">
+                                        <span class="text-xs">2:52 PM (1 minute ago)</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="pl-0 md:pl-12 mt-2 pb-6 border-b border-gray-100">
+                            <div class="text-[14px] text-[#202124] leading-relaxed max-w-3xl">
+                                <p>Everything looks great!</p>
+                                <p class="mt-2">OK, you have my consent to text me on WhatsApp. I find it super practical to have the link and the reminder there just in case. We'll talk tomorrow with Marcos to finish closing everything.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- EMAIL 8: IA DESPEDIDA FINAL -->
+                    <div class="email-item pt-4" id="email8">
+                        <div class="flex items-start gap-3 mb-2">
+                            <div class="w-10 h-10 border border-gray-200 rounded-full bg-[#1a222d] flex items-center justify-center shrink-0">
+                                <span class="text-white font-bold text-xs">P</span>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex justify-between items-start">
+                                    <div class="flex flex-col">
+                                        <span class="font-bold text-[14px] text-[#202124]">Palonia Agentforce <span class="text-xs font-normal text-gray-500">&lt;assistant@palonia.com&gt;</span></span>
+                                    </div>
+                                    <div class="flex items-center gap-3 text-gray-500">
+                                        <span class="text-xs">2:53 PM (just now)</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="pl-0 md:pl-12 mt-2 pb-12 border-b-0 border-gray-100 relative">
+                            <div class="text-[14px] text-[#202124] leading-relaxed max-w-3xl">
+                                <p>Channel successfully activated, Sarah! 📱</p>
+                                
+                                <p class="mt-2">Marcos will text you tomorrow on WhatsApp with the link and the video call reminder.</p>
+                                <p class="mt-2">It has been a pleasure helping you organize this first proposal. See you very soon. Remember: <strong>Live up to more.</strong></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- BANNER GMAIL DE NUEVO MENSAJE (Oculto por defecto) -->
+                    <div id="newMessageBanner" class="message-banner">
+                        <span>New Message from <span id="bannerSenderName">Palonia Agentforce</span></span>
+                        <span class="banner-link" id="showNewMessageBtn">Show</span>
+                        <span class="banner-link" id="ignoreNewMessageBtn">Ignore</span>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPT DE SIMULACIÓN -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const AI_REPLY_DELAY_MS = 2500;
+            const SARAH_TYPING_BASE_MS = 28; // ~web chat cadence (15–30ms per char)
+
+            // Dynamic timestamps — revert: restore static text in .email-ts spans and remove this block + hooks below
+            const TS_LOCALE = 'en-US';
+            const CAMPAIGN_HOUR = 9;
+            const CAMPAIGN_MINUTE = 55;
+            let lastSarahSentAt = null;
+
+            function getCampaignDate() {
+                const d = new Date();
+                d.setHours(CAMPAIGN_HOUR, CAMPAIGN_MINUTE, 0, 0);
+                if (d > new Date()) d.setDate(d.getDate() - 1);
+                return d;
+            }
+
+            function formatEmailTime(date) {
+                return date.toLocaleTimeString(TS_LOCALE, { hour: 'numeric', minute: '2-digit', hour12: true });
+            }
+
+            function formatRelativeAgo(past, now = new Date()) {
+                const diffMin = Math.floor((now - past) / 60000);
+                if (diffMin < 1) return 'just now';
+                if (diffMin === 1) return '1 minute ago';
+                if (diffMin < 60) return `${diffMin} minutes ago`;
+                const diffHr = Math.floor(diffMin / 60);
+                if (diffHr === 1) return '1 hour ago';
+                return `${diffHr} hours ago`;
+            }
+
+            function setEmailTimestamp(emailId, date) {
+                const el = document.querySelector(`#${emailId} .email-ts`);
+                if (!el || !date) return;
+                el.textContent = `${formatEmailTime(date)} (${formatRelativeAgo(date)})`;
+            }
+
+            setTimeout(() => iniciarFlujo(), 600);
+
+            // Preserve compose HTML before any typing animation mutates the DOM
+            ['composeBody1', 'composeBody2', 'composeBody2_5'].forEach((id) => {
+                const el = document.getElementById(id);
+                if (el) el.dataset.originalHtml = el.innerHTML.trim();
+            });
+
+            // Función para simular escritura real (Sarah — slower, human-like)
+            function typeHTML(el, html, speed, onComplete) {
+                // Limpiar espacios en blanco excesivos para no escribir "espacios invisibles"
+                html = html.replace(/\s+/g, ' ').replace(/>\s+</g, '><').trim();
+                el.innerHTML = '';
+                el.classList.remove('hidden');
+                let i = 0;
+                let currentHTML = '';
+                let timeoutId = null;
+                let isSkipped = false;
+                
+                // Any letter/key: fill the full draft instantly (does not send)
+                const skipTyping = (e) => {
+                    if (e.key === "Alt" || e.key === "Control" || e.key === "Shift" || e.key === "Meta" || e.key === "Enter") return;
+                    isSkipped = true;
+                    clearTimeout(timeoutId);
+                    el.innerHTML = html; // Mostrar todo el texto de golpe
+                    document.removeEventListener('keydown', skipTyping);
+                    
+                    // Hacer scroll hasta asegurar que se vea el bloque recién completado
+                    const container = document.getElementById('scrollContainer');
+                    if (container) {
+                        const rect = el.getBoundingClientRect();
+                        if (rect.bottom > window.innerHeight - 60) {
+                            container.scrollTop += (rect.bottom - window.innerHeight + 80);
+                        }
+                    }
+                    if (onComplete) onComplete();
+                };
+
+                // Escuchar pulsación de tecla para saltar la animación mientras dura
+                document.addEventListener('keydown', skipTyping);
+                
+                function type() {
+                    if (isSkipped) return; // Si el usuario ha saltado la animación, detener el bucle
+
+                    if (i < html.length) {
+                        let char = html.charAt(i);
+                        currentHTML += char;
+                        
+                        // Si es una etiqueta HTML (ej. <strong>), la añadimos entera de golpe para no romper el DOM
+                        if (char === '<') {
+                            let tagEnd = html.indexOf('>', i);
+                            if (tagEnd !== -1) {
+                                currentHTML += html.substring(i + 1, tagEnd + 1);
+                                i = tagEnd;
+                            }
+                        }
+                        
+                        el.innerHTML = currentHTML + '<span class="typing-cursor">|</span>';
+                        i++;
+                        
+                        // Scroll automático suave hacia abajo si el texto crece más allá de la pantalla
+                        const container = document.getElementById('scrollContainer');
+                        if (container) {
+                            const rect = el.getBoundingClientRect();
+                            if (rect.bottom > window.innerHeight - 60) {
+                                container.scrollTop += 25;
+                            }
+                        }
+
+                        // Velocidad base + aleatoriedad para parecer un humano tecleando (acelerado ~30%)
+                        timeoutId = setTimeout(type, speed + Math.random() * 18);
+                    } else {
+                        el.innerHTML = currentHTML; // Quitar el cursor al terminar
+                        document.removeEventListener('keydown', skipTyping); // Limpiar el listener
+                        if (onComplete) onComplete();
+                    }
+                }
+                type();
+            }
+
+            function iniciarFlujo() {
+                const delayMs = AI_REPLY_DELAY_MS;
+                // Demo ends at email4_3 (budget + upsells + VIEW DETAILS ON THE WEB)
+                const sequence = [
+                    { action: 'show', id: 'email1', type: 'auto', delay: 500 },
+                    { action: 'show', id: 'compose1', type: 'click', triggerBtn: 'replyBtn1', altTriggerBtn: 'replyIcon1', hideId: 'replyArea1' },
+                    { action: 'compose_type', targetId: 'composeBody1', hideId: 'compose1', showId: 'email2', sendBtn: 'sendBtn1' },
+
+                    { action: 'show', id: 'email3', type: 'ai_response', sender: 'Palonia Agentforce' },
+                    { action: 'show', id: 'compose2', type: 'click', triggerBtn: 'replyBtn2', altTriggerBtn: 'replyIcon2', hideId: 'replyArea2' },
+                    { action: 'compose_type', targetId: 'composeBody2', hideId: 'compose2', showId: 'email4', sendBtn: 'sendBtn2' },
+
+                    { action: 'show', id: 'email4_1', type: 'ai_response', sender: 'Palonia Agentforce' },
+                    { action: 'show', id: 'compose2_5', type: 'click', triggerBtn: 'replyBtn4_1', altTriggerBtn: 'replyIcon4_1', hideId: 'replyArea4_1' },
+                    { action: 'compose_type', targetId: 'composeBody2_5', hideId: 'compose2_5', showId: 'email4_2', sendBtn: 'sendBtn2_5' },
+
+                    { action: 'show', id: 'email4_3', type: 'ai_response', sender: 'Palonia Agentforce', isFinal: true }
+                ];
+                
+                const container = document.getElementById('scrollContainer');
+                let currentStep = 0;
+
+                function animateIn(el) {
+                    el.classList.add('active'); 
+                    void el.offsetWidth; 
+                    el.classList.add('visible');
+                }
+
+                function scrollAfter(targetEl) {
+                    setTimeout(() => {
+                        const parentItem = targetEl.closest('.email-item') || targetEl;
+                        const topPos = parentItem.offsetTop - 70;
+                        container.scrollTo({ top: topPos, behavior: 'smooth' });
+                    }, 50);
+                }
+
+                function showNext() {
+                    if (currentStep >= sequence.length) return;
+                    
+                    const step = sequence[currentStep];
+                    let targetEl = null;
+
+                    if (step.action === 'show') {
+                        targetEl = document.getElementById(step.id);
+                        if (targetEl) {
+                            animateIn(targetEl);
+                            if (step.id === 'email1') setEmailTimestamp('email1', getCampaignDate());
+                        }
+                        
+                        if (step.hideId) {
+                            const hEl = document.getElementById(step.hideId);
+                            if (hEl) hEl.style.display = 'none';
+                        }
+                    } else if (step.action === 'replace') {
+                        const hideEl = document.getElementById(step.hideId);
+                        targetEl = document.getElementById(step.showId);
+                        
+                        if (hideEl) {
+                            hideEl.classList.remove('visible', 'active');
+                            hideEl.style.display = 'none'; 
+                        }
+                        if (targetEl) animateIn(targetEl);
+                    } else if (step.action === 'compose_type') {
+                        const contentEl = document.getElementById(step.targetId);
+                        const hideEl = document.getElementById(step.hideId);
+                        const showEl = document.getElementById(step.showId);
+                        const sendBtn = document.getElementById(step.sendBtn);
+
+                        const wireSendOnly = () => {
+                            if (!sendBtn || sendBtn.dataset.demoWired === 'true') return;
+                            sendBtn.dataset.demoWired = 'true';
+
+                            const onSend = () => {
+                                sendBtn.removeEventListener('click', onSend);
+                                sendBtn.dataset.demoWired = '';
+                                if (hideEl) {
+                                    hideEl.classList.remove('visible', 'active');
+                                    hideEl.style.display = 'none';
+                                }
+                                if (showEl) {
+                                    animateIn(showEl);
+                                    scrollAfter(showEl);
+                                    const sentAt = new Date();
+                                    if (showEl.id === 'email2' || showEl.id === 'email4' || showEl.id === 'email4_2') {
+                                        lastSarahSentAt = sentAt;
+                                        setEmailTimestamp(showEl.id, sentAt);
+                                    }
+                                }
+                                currentStep++;
+                                setupTriggerForCurrentStep();
+                            };
+                            sendBtn.addEventListener('click', onSend);
+                        };
+
+                        if (contentEl) {
+                            contentEl.classList.remove('hidden');
+                            if (!contentEl.dataset.typed) {
+                                contentEl.dataset.typed = 'true';
+                                const htmlContent = contentEl.dataset.originalHtml || contentEl.innerHTML;
+                                typeHTML(contentEl, htmlContent, SARAH_TYPING_BASE_MS, wireSendOnly);
+                                return;
+                            }
+                            wireSendOnly();
+                        }
+                        return;
+                    }
+
+                    if (targetEl) scrollAfter(targetEl);
+
+                    currentStep++;
+                    setupTriggerForCurrentStep();
+                }
+
+                // Función que muestra el Banner de "New Message" de Gmail
+                function triggerNewMessageAlert(step) {
+                    const banner = document.getElementById('newMessageBanner');
+                    const targetEl = document.getElementById(step.id);
+                    const senderName = step.sender || 'Palonia Hotel Group';
+
+                    document.getElementById('bannerSenderName').innerText = senderName;
+
+                    // Insertamos el banner justo antes del correo que se va a revelar
+                    targetEl.parentNode.insertBefore(banner, targetEl);
+
+                    // Lo mostramos con animación
+                    banner.style.display = 'flex';
+                    void banner.offsetWidth; // Reflow
+                    banner.classList.add('visible-banner');
+
+                    // Hacemos scroll suave para que el usuario vea la alerta amarilla
+                    setTimeout(() => {
+                        const topPos = banner.offsetTop - 70;
+                        container.scrollTo({ top: topPos, behavior: 'smooth' });
+                    }, 50);
+
+                    // Logica de los botones del banner
+                    const showBtn = document.getElementById('showNewMessageBtn');
+                    const ignoreBtn = document.getElementById('ignoreNewMessageBtn');
+
+                    const onShow = () => {
+                        banner.classList.remove('visible-banner');
+                        setTimeout(() => {
+                            banner.style.display = 'none';
+                            const agentOffsets = { email3: 1, email4_1: 2, email4_3: 2 };
+                            if (agentOffsets[step.id] && lastSarahSentAt) {
+                                const agentAt = new Date(lastSarahSentAt.getTime() + agentOffsets[step.id] * 60000);
+                                setEmailTimestamp(step.id, agentAt);
+                            } else if (step.id === 'email3' || step.id === 'email4_1' || step.id === 'email4_3') {
+                                setEmailTimestamp(step.id, new Date());
+                            }
+                            showNext();
+                            if (step.isFinal) {
+                                const webBtn = document.getElementById('viewWebBtn');
+                                if (webBtn) {
+                                    webBtn.classList.add('demo-highlight');
+                                    setTimeout(() => webBtn.scrollIntoView({ behavior: 'smooth', block: 'center' }), 400);
+                                }
+                            }
+                        }, 300);
+                        showBtn.removeEventListener('click', onShow);
+                        ignoreBtn.removeEventListener('click', onIgnore);
+                    };
+
+                    const onIgnore = () => {
+                        banner.classList.remove('visible-banner');
+                        setTimeout(() => banner.style.display = 'none', 300);
+                        showBtn.removeEventListener('click', onShow);
+                        ignoreBtn.removeEventListener('click', onIgnore);
+                    };
+
+                    showBtn.addEventListener('click', onShow);
+                    ignoreBtn.addEventListener('click', onIgnore);
+                }
+
+                function setupTriggerForCurrentStep() {
+                    if (currentStep >= sequence.length) return;
+
+                    const nextStep = sequence[currentStep];
+
+                    // Auto-start Sarah typing after compose opens; Send is manual (click only)
+                    if (nextStep.action === 'compose_type') {
+                        setTimeout(showNext, 350);
+                        return;
+                    }
+
+                    if (nextStep.type === 'auto') {
+                        setTimeout(showNext, nextStep.delay || 0);
+                    } 
+                    else if (nextStep.type === 'click') {
+                        const btn = document.getElementById(nextStep.triggerBtn);
+                        const altBtn = nextStep.altTriggerBtn ? document.getElementById(nextStep.altTriggerBtn) : null;
+                        
+                        const onClick = function() {
+                            if(btn) btn.removeEventListener('click', onClick);
+                            if(altBtn) altBtn.removeEventListener('click', onClick);
+                            showNext();
+                        };
+
+                        if (btn) btn.addEventListener('click', onClick);
+                        if (altBtn) altBtn.addEventListener('click', onClick);
+                    }
+                    else if (nextStep.type === 'ai_response') {
+                        setTimeout(() => triggerNewMessageAlert(nextStep), delayMs);
+                    }
+                }
+
+                // Iniciar máquina de estados
+                setupTriggerForCurrentStep();
+            }
+        });
+    </script>
+</body>
+</html>
