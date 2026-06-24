@@ -54,10 +54,18 @@
         .action-row { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid #f5f5f5; font-size: 12px; }
         .action-row:last-of-type { border-bottom: none; }
         .chart-donut { height: min(42vh, 400px); min-height: 300px; position: relative; flex: 1; }
-        .chart-donut-lg { height: min(36vh, 340px); min-height: 280px; }
+        .chart-donut-lg { height: 280px; min-height: 280px; max-height: 280px; overflow: hidden; }
         .chart-bar-h { height: min(40vh, 380px); min-height: 300px; flex: 1; }
-        .chart-bar-stack { height: 360px; }
-        .chart-mini-area { height: 72px; }
+        .chart-bar-stack { height: 360px; min-height: 360px; max-height: 360px; overflow: hidden; }
+        .chart-mini-area { height: 72px; min-height: 72px; max-height: 72px; overflow: hidden; flex: none !important; }
+        .chart-mini-area canvas, .chart-donut-lg canvas { display: block !important; max-width: 100% !important; }
+        #view-attribution { overflow-x: hidden; }
+        #attrOverviewCards { min-height: 360px; contain: layout style; }
+        #attrOverviewCards > .attr-overview-card { min-width: 0; max-width: 100%; overflow: hidden; }
+        .attr-overview-card { min-height: 168px; max-height: 200px; }
+        .attr-overview-card [data-ov-label],
+        .attr-overview-card [data-ov-value],
+        .attr-overview-card [data-ov-cmp] { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .donut-center-label { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; font-weight: 700; text-align: center; }
         .donut-center-label .text-lg { font-size: 1.35rem; }
         .home-widget-chart { display: flex; flex-direction: column; min-height: 0; }
@@ -438,6 +446,39 @@
         let currentTab = 'home';
         let currentAttrModel = 'last-touch';
         let homeDonutMode = 'revenue';
+        let attrOverviewTimer = null;
+        let attrChartsTimer = null;
+        let suppressHashBoot = false;
+        let attrRenderGen = 0;
+        const ATTR_OVERVIEW_COUNT = 6;
+        const CHART_NO_ANIM = { animation: false, animations: { colors: false, x: false, y: false } };
+        const ATTR_SPARK_H = 72;
+        const ATTR_DONUT_H = 280;
+
+        function attrSparkOpts() {
+            return {
+                responsive: false,
+                maintainAspectRatio: false,
+                ...CHART_NO_ANIM,
+                plugins: { legend: { display: false }, datalabels: { display: false }, tooltip: { enabled: false } },
+                scales: { x: { display: false }, y: { display: false } },
+                elements: { point: { radius: 0 }, line: { borderWidth: 2, tension: 0.4 } },
+                events: []
+            };
+        }
+
+        function pinCanvasSize(el, height) {
+            if (!el) return;
+            const box = el.parentElement;
+            const w = Math.max((box && box.clientWidth) || 200, 80);
+            const dpr = window.devicePixelRatio || 1;
+            el.style.width = '100%';
+            el.style.height = height + 'px';
+            el.style.maxWidth = '100%';
+            el.style.display = 'block';
+            el.width = Math.round(w * dpr);
+            el.height = Math.round(height * dpr);
+        }
 
         const donutPlugin = {
             id: 'donutCenter',
@@ -457,6 +498,18 @@
         Chart.register(donutPlugin);
 
         function destroyChart(id) { if (charts[id]) { charts[id].destroy(); delete charts[id]; } }
+
+        function setHashQuiet(hash) {
+            const next = hash.startsWith('#') ? hash : '#' + hash;
+            if (location.hash === next) return;
+            history.replaceState(null, '', location.pathname + location.search + next);
+        }
+
+        function destroyAttrOverviewCharts() {
+            Object.keys(charts).forEach(function (k) {
+                if (k.indexOf('attrOv') === 0) destroyChart(k);
+            });
+        }
 
         const miniSparkOpts = {
             responsive: true, maintainAspectRatio: false,
@@ -496,8 +549,9 @@
                     datasets: [{ data: values, backgroundColor: labels.map((_, i) => ATTR_COLORS[i % ATTR_COLORS.length] || HOME_CHANNEL_COLORS[i % 5]), borderWidth: 2, borderColor: '#fff' }]
                 },
                 options: {
-                    responsive: true, maintainAspectRatio: false, cutout: '58%',
+                    responsive: false, maintainAspectRatio: false, cutout: '58%',
                     layout: { padding: 8 },
+                    ...CHART_NO_ANIM,
                     plugins: {
                         legend: { position: legendRight ? 'right' : 'bottom', labels: { boxWidth: 10, font: { size: 10 }, padding: 8 } },
                         datalabels: {
@@ -510,6 +564,22 @@
                     }
                 }
             });
+        }
+
+        function upsertRichDonut(id, values, labels, legendRight = true) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            pinCanvasSize(el, ATTR_DONUT_H);
+            const bg = labels.map((_, i) => ATTR_COLORS[i % ATTR_COLORS.length] || HOME_CHANNEL_COLORS[i % 5]);
+            if (charts[id] && charts[id].config.type === 'doughnut') {
+                charts[id].data.labels = labels;
+                charts[id].data.datasets[0].data = values;
+                charts[id].data.datasets[0].backgroundColor = bg;
+                charts[id].resize(el.parentElement.clientWidth, ATTR_DONUT_H);
+                charts[id].update('none');
+                return;
+            }
+            makeRichDonut(id, values, labels, legendRight);
         }
 
         function initHomeCharts() {
@@ -624,41 +694,80 @@
             });
         }
 
-        function renderAttrOverview(model) {
+        function ensureAttrOverviewShell() {
             const wrap = document.getElementById('attrOverviewCards');
-            wrap.innerHTML = model.overview.map((c, i) => `
-                <div class="sf-card p-3 flex flex-col">
-                    <p class="text-[11px] text-gray-500">${c.label}</p>
+            if (!wrap || wrap.dataset.ready === '1') return;
+            wrap.innerHTML = Array.from({ length: ATTR_OVERVIEW_COUNT }, (_, i) => `
+                <div class="sf-card p-3 flex flex-col attr-overview-card" data-ov="${i}">
+                    <p class="text-[11px] text-gray-500" data-ov-label></p>
                     <p class="text-xs text-gray-400">All</p>
-                    <p class="text-xl font-bold mt-1">${c.value}</p>
-                    <p class="text-[10px] text-gray-500">${c.cmp}</p>
-                    <div class="chart-mini-area mt-2 flex-1"><canvas id="attrOv${i}"></canvas></div>
+                    <p class="text-xl font-bold mt-1" data-ov-value></p>
+                    <p class="text-[10px] text-gray-500" data-ov-cmp></p>
+                    <div class="chart-mini-area mt-2"><canvas id="attrOv${i}"></canvas></div>
                     <p class="text-[9px] text-gray-400 mt-1 flex justify-between"><span>Oct 17, 2025</span><span>Dec 21, 2025</span></p>
-                    ${c.empty ? '<p class="text-[10px] text-amber-700 mt-1">No data available for selected range.</p>' : '<p class="text-[10px] text-[#0176d3] mt-1"><i class="fa-solid fa-diamond text-[6px]"></i> Analyzing your data</p>'}
+                    <p class="text-[10px] mt-1" data-ov-foot></p>
                 </div>
             `).join('');
-            setTimeout(() => {
-                model.overview.forEach((c, i) => {
-                    const id = 'attrOv' + i;
-                    destroyChart(id);
-                    const el = document.getElementById(id);
-                    if (!el) return;
-                    const color = ['#0176d3', '#7e57c2', '#2e844a', '#e5a000', '#014486', '#ba0517'][i];
-                    if (c.type === 'bar') {
-                        charts[id] = new Chart(el, {
-                            type: 'bar',
-                            data: { labels: DATE_LABELS, datasets: [{ data: c.spark, backgroundColor: color + '99', borderRadius: 2 }] },
-                            options: { ...miniSparkOpts, plugins: { ...miniSparkOpts.plugins, datalabels: { display: false } } }
-                        });
-                    } else {
-                        charts[id] = new Chart(el, {
-                            type: 'line',
-                            data: { labels: DATE_LABELS, datasets: [{ data: c.spark, borderColor: color, backgroundColor: color + '33', fill: c.type === 'area' }] },
-                            options: miniSparkOpts
-                        });
+            wrap.dataset.ready = '1';
+        }
+
+        function upsertOverviewSpark(id, c, i) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            pinCanvasSize(el, ATTR_SPARK_H);
+            const color = ['#0176d3', '#7e57c2', '#2e844a', '#e5a000', '#014486', '#ba0517'][i];
+            const wantType = c.type === 'bar' ? 'bar' : 'line';
+            const opts = attrSparkOpts();
+            if (charts[id]) {
+                if (charts[id].config.type !== wantType) destroyChart(id);
+                else {
+                    const ds = charts[id].data.datasets[0];
+                    ds.data = c.spark;
+                    if (wantType === 'bar') ds.backgroundColor = color + '99';
+                    else {
+                        ds.borderColor = color;
+                        ds.backgroundColor = color + '33';
+                        ds.fill = c.type === 'area';
                     }
+                    charts[id].resize(el.parentElement.clientWidth, ATTR_SPARK_H);
+                    charts[id].update('none');
+                    return;
+                }
+            }
+            if (c.type === 'bar') {
+                charts[id] = new Chart(el, {
+                    type: 'bar',
+                    data: { labels: DATE_LABELS, datasets: [{ data: c.spark, backgroundColor: color + '99', borderRadius: 2 }] },
+                    options: { ...opts, plugins: { ...opts.plugins, datalabels: { display: false } } }
                 });
-            }, 60);
+            } else {
+                charts[id] = new Chart(el, {
+                    type: 'line',
+                    data: { labels: DATE_LABELS, datasets: [{ data: c.spark, borderColor: color, backgroundColor: color + '33', fill: c.type === 'area' }] },
+                    options: opts
+                });
+            }
+        }
+
+        function renderAttrOverview(model, gen) {
+            if (attrOverviewTimer) { clearTimeout(attrOverviewTimer); attrOverviewTimer = null; }
+            ensureAttrOverviewShell();
+            const wrap = document.getElementById('attrOverviewCards');
+            model.overview.forEach((c, i) => {
+                const card = wrap.querySelector('[data-ov="' + i + '"]');
+                if (!card) return;
+                card.querySelector('[data-ov-label]').textContent = c.label;
+                card.querySelector('[data-ov-value]').textContent = c.value;
+                card.querySelector('[data-ov-cmp]').textContent = c.cmp;
+                const foot = card.querySelector('[data-ov-foot]');
+                foot.className = 'text-[10px] mt-1' + (c.empty ? ' text-amber-700' : ' text-[#0176d3]');
+                foot.innerHTML = c.empty ? 'No data available for selected range.' : '<i class="fa-solid fa-diamond text-[6px]"></i> Analyzing your data';
+            });
+            attrOverviewTimer = setTimeout(() => {
+                attrOverviewTimer = null;
+                if (gen !== attrRenderGen) return;
+                model.overview.forEach((c, i) => upsertOverviewSpark('attrOv' + i, c, i));
+            }, 0);
         }
 
         function renderAttrKpis(model) {
@@ -757,23 +866,37 @@
             const oppVals = scaleCredit(m.credit.opps, 121);
             const spendVals = scaleCredit(m.credit.spend, 68);
             const revVals = scaleCredit(m.credit.revenue, 198);
-            makeRichDonut('attrLeadsDonut', leadVals, ATTR_CHANNELS);
-            makeRichDonut('attrOppsDonut', oppVals, ATTR_CHANNELS);
-            makeRichDonut('attrSpendDonut', spendVals.map(v => v * 1000), ATTR_CHANNELS);
-            makeRichDonut('attrRevDonut', revVals.map(v => v * 1000), ATTR_CHANNELS);
+            upsertRichDonut('attrLeadsDonut', leadVals, ATTR_CHANNELS);
+            upsertRichDonut('attrOppsDonut', oppVals, ATTR_CHANNELS);
+            upsertRichDonut('attrSpendDonut', spendVals.map(v => v * 1000), ATTR_CHANNELS);
+            upsertRichDonut('attrRevDonut', revVals.map(v => v * 1000), ATTR_CHANNELS);
             if (!charts.attrLeadStack) initAttrStackedBars();
         }
 
         function setAttrModel(key) {
+            if (!ATTRIBUTION_MODELS[key]) return;
+            if (key === currentAttrModel && currentTab === 'attribution' && document.getElementById('attrOverviewCards')?.dataset.ready === '1') {
+                document.querySelectorAll('[data-attr]').forEach(el => el.classList.toggle('active', el.dataset.attr === key));
+                if (currentTab === 'attribution') setHashQuiet('attribution-' + key);
+                return;
+            }
+            if (attrOverviewTimer) { clearTimeout(attrOverviewTimer); attrOverviewTimer = null; }
+            if (attrChartsTimer) { clearTimeout(attrChartsTimer); attrChartsTimer = null; }
+            const gen = ++attrRenderGen;
             currentAttrModel = key;
             const m = ATTRIBUTION_MODELS[key];
             document.getElementById('attrTitle').textContent = m.title;
             document.getElementById('attrDesc').textContent = m.desc;
-            renderAttrOverview(m);
+            renderAttrOverview(m, gen);
             renderAttrKpis(m);
             renderAttrTable(key);
-            setTimeout(() => initAttributionCharts(key), 80);
+            attrChartsTimer = setTimeout(() => {
+                attrChartsTimer = null;
+                if (gen !== attrRenderGen) return;
+                initAttributionCharts(key);
+            }, 0);
             document.querySelectorAll('[data-attr]').forEach(el => el.classList.toggle('active', el.dataset.attr === key));
+            if (currentTab === 'attribution') setHashQuiet('attribution-' + key);
         }
 
         const SIDEBARS = {
@@ -794,26 +917,42 @@
         };
 
         function showTab(tab) {
+            const prevTab = currentTab;
             currentTab = tab;
             document.querySelectorAll('.sf-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
             document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
             const ids = { home: 'view-home', analytics: 'view-analytics', attribution: 'view-attribution', data: 'view-data' };
             document.getElementById(ids[tab] || 'view-home').classList.add('active');
-            document.getElementById('sidebarNav').innerHTML = SIDEBARS[tab] || SIDEBARS.home;
+            if (prevTab !== tab) {
+                document.getElementById('sidebarNav').innerHTML = SIDEBARS[tab] || SIDEBARS.home;
+                bindSidebar();
+            }
             if (tab === 'home') setTimeout(initHomeCharts, 80);
             if (tab === 'analytics') setTimeout(initAnalyticsCharts, 80);
             if (tab === 'attribution') {
                 if (!charts.attrLeadStack) initAttrStackedBars();
-                setAttrModel(currentAttrModel);
+                if (prevTab !== tab || document.getElementById('attrOverviewCards')?.dataset.ready !== '1') {
+                    setAttrModel(currentAttrModel);
+                } else {
+                    document.querySelectorAll('[data-attr]').forEach(el => el.classList.toggle('active', el.dataset.attr === currentAttrModel));
+                }
+            } else {
+                setHashQuiet(tab);
             }
-            bindSidebar();
-            location.hash = tab === 'attribution' ? `attribution-${currentAttrModel}` : tab;
         }
 
         function bindSidebar() {
             document.querySelectorAll('[data-goto]').forEach(el => { el.onclick = () => showTab(el.dataset.goto); });
             document.querySelectorAll('[data-attr]').forEach(el => {
-                el.onclick = () => { showTab('attribution'); setAttrModel(el.dataset.attr); };
+                el.onclick = () => {
+                    const key = el.dataset.attr;
+                    if (currentTab !== 'attribution') {
+                        currentAttrModel = key;
+                        showTab('attribution');
+                    } else {
+                        setAttrModel(key);
+                    }
+                };
             });
         }
 
@@ -825,16 +964,21 @@
         function bootFromHash() {
             const h = (location.hash || '#home').replace('#', '');
             if (h.startsWith('attribution')) {
-                showTab('attribution');
                 const model = h.replace('attribution-', '') || 'last-touch';
-                if (ATTRIBUTION_MODELS[model]) setAttrModel(model);
+                if (!ATTRIBUTION_MODELS[model]) return;
+                if (currentTab === 'attribution') {
+                    if (model !== currentAttrModel) setAttrModel(model);
+                    return;
+                }
+                currentAttrModel = model;
+                showTab('attribution');
                 return;
             }
             if (['home', 'analytics', 'data', 'attribution'].includes(h)) showTab(h);
             else showTab('home');
         }
 
-        window.addEventListener('hashchange', bootFromHash);
+        window.addEventListener('hashchange', () => { if (!suppressHashBoot) bootFromHash(); });
         document.getElementById('sidebarNav').innerHTML = SIDEBARS.home;
         bindSidebar();
         bootFromHash();
