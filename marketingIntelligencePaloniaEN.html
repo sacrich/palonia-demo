@@ -451,15 +451,6 @@
             'attrLeadStack', 'attrOppStack'
         ];
         const CHART_NO_ANIM = { animation: false, animations: { colors: false, x: false, y: false } };
-        const ATTR_SPARK_OPTS = {
-            responsive: true,
-            maintainAspectRatio: false,
-            ...CHART_NO_ANIM,
-            plugins: { legend: { display: false }, datalabels: { display: false }, tooltip: { enabled: false } },
-            scales: { x: { display: false }, y: { display: false } },
-            elements: { point: { radius: 0 }, line: { borderWidth: 2, tension: 0.4 } },
-            events: []
-        };
 
         function destroyAttrCharts() {
             ATTR_CHART_IDS.forEach(destroyChart);
@@ -720,24 +711,45 @@
             wrap.dataset.ready = '1';
         }
 
+        function refreshOverviewSparkCanvases() {
+            const wrap = document.getElementById('attrOverviewCards');
+            if (!wrap) return;
+            for (let i = 0; i < ATTR_OVERVIEW_COUNT; i++) {
+                const area = wrap.querySelector('[data-ov="' + i + '"] .chart-mini-area');
+                if (area) area.innerHTML = '<canvas id="attrOv' + i + '"></canvas>';
+            }
+        }
+
         function makeOverviewSpark(id, c, i) {
             destroyChart(id);
             const el = document.getElementById(id);
             if (!el) return;
+            const box = el.parentElement;
             const color = ['#0176d3', '#7e57c2', '#2e844a', '#e5a000', '#014486', '#ba0517'][i];
+            const sparkOpts = {
+                responsive: false,
+                maintainAspectRatio: false,
+                ...CHART_NO_ANIM,
+                plugins: { legend: { display: false }, datalabels: { display: false }, tooltip: { enabled: false } },
+                scales: { x: { display: false }, y: { display: false } },
+                elements: { point: { radius: 0 }, line: { borderWidth: 2, tension: 0.4 } },
+                events: []
+            };
             if (c.type === 'bar') {
                 charts[id] = new Chart(el, {
                     type: 'bar',
                     data: { labels: DATE_LABELS, datasets: [{ data: c.spark, backgroundColor: color + '99', borderRadius: 2 }] },
-                    options: { ...ATTR_SPARK_OPTS, plugins: { ...ATTR_SPARK_OPTS.plugins, datalabels: { display: false } } }
+                    options: { ...sparkOpts, plugins: { ...sparkOpts.plugins, datalabels: { display: false } } }
                 });
             } else {
                 charts[id] = new Chart(el, {
                     type: 'line',
                     data: { labels: DATE_LABELS, datasets: [{ data: c.spark, borderColor: color, backgroundColor: color + '33', fill: c.type === 'area' }] },
-                    options: ATTR_SPARK_OPTS
+                    options: sparkOpts
                 });
             }
+            const w = Math.max(box?.clientWidth || box?.offsetWidth || 200, 80);
+            charts[id].resize(w, 72);
         }
 
         function renderAttrOverview(model) {
@@ -869,6 +881,8 @@
             document.getElementById('attrTitle').textContent = m.title;
             document.getElementById('attrDesc').textContent = m.desc;
             destroyAttrCharts();
+            ensureAttrOverviewShell();
+            refreshOverviewSparkCanvases();
             renderAttrOverview(m);
             renderAttrKpis(m);
             renderAttrTable(key);
