@@ -54,18 +54,15 @@
         .action-row { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid #f5f5f5; font-size: 12px; }
         .action-row:last-of-type { border-bottom: none; }
         .chart-donut { height: min(42vh, 400px); min-height: 300px; position: relative; flex: 1; }
-        .chart-donut-lg { height: 280px; min-height: 280px; max-height: 280px; overflow: hidden; }
+        .chart-donut-lg { height: min(36vh, 340px); min-height: 280px; overflow: hidden; }
         .chart-bar-h { height: min(40vh, 380px); min-height: 300px; flex: 1; }
-        .chart-bar-stack { height: 360px; min-height: 360px; max-height: 360px; overflow: hidden; }
+        .chart-bar-stack { height: min(38vh, 360px); min-height: 300px; overflow: hidden; }
         .chart-mini-area { height: 72px; min-height: 72px; max-height: 72px; overflow: hidden; flex: none !important; }
         .chart-mini-area canvas, .chart-donut-lg canvas { display: block !important; max-width: 100% !important; }
         #view-attribution { overflow-x: hidden; }
-        #attrOverviewCards { min-height: 360px; contain: layout style; }
-        #attrOverviewCards > .attr-overview-card { min-width: 0; max-width: 100%; overflow: hidden; }
-        .attr-overview-card { min-height: 168px; max-height: 200px; }
-        .attr-overview-card [data-ov-label],
-        .attr-overview-card [data-ov-value],
-        .attr-overview-card [data-ov-cmp] { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        #attrOverviewCards { contain: layout style; }
+        #attrOverviewCards > .attr-overview-card { min-width: 0; overflow: hidden; }
+        .attr-overview-card { min-height: 168px; }
         .donut-center-label { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; font-weight: 700; text-align: center; }
         .donut-center-label .text-lg { font-size: 1.35rem; }
         .home-widget-chart { display: flex; flex-direction: column; min-height: 0; }
@@ -450,10 +447,9 @@
         let attrChartsTimer = null;
         let suppressHashBoot = false;
         let attrRenderGen = 0;
+        let attrSwitching = false;
         const ATTR_OVERVIEW_COUNT = 6;
         const CHART_NO_ANIM = { animation: false, animations: { colors: false, x: false, y: false } };
-        const ATTR_SPARK_H = 72;
-        const ATTR_DONUT_H = 280;
 
         function attrSparkOpts() {
             return {
@@ -467,17 +463,19 @@
             };
         }
 
-        function pinCanvasSize(el, height) {
-            if (!el) return;
+        function pinCanvasSize(el) {
+            if (!el) return 0;
             const box = el.parentElement;
             const w = Math.max((box && box.clientWidth) || 200, 80);
+            const h = Math.max((box && box.clientHeight) || 72, 40);
             const dpr = window.devicePixelRatio || 1;
             el.style.width = '100%';
-            el.style.height = height + 'px';
+            el.style.height = h + 'px';
             el.style.maxWidth = '100%';
             el.style.display = 'block';
             el.width = Math.round(w * dpr);
-            el.height = Math.round(height * dpr);
+            el.height = Math.round(h * dpr);
+            return h;
         }
 
         const donutPlugin = {
@@ -569,13 +567,14 @@
         function upsertRichDonut(id, values, labels, legendRight = true) {
             const el = document.getElementById(id);
             if (!el) return;
-            pinCanvasSize(el, ATTR_DONUT_H);
+            pinCanvasSize(el);
             const bg = labels.map((_, i) => ATTR_COLORS[i % ATTR_COLORS.length] || HOME_CHANNEL_COLORS[i % 5]);
             if (charts[id] && charts[id].config.type === 'doughnut') {
                 charts[id].data.labels = labels;
                 charts[id].data.datasets[0].data = values;
                 charts[id].data.datasets[0].backgroundColor = bg;
-                charts[id].resize(el.parentElement.clientWidth, ATTR_DONUT_H);
+                const h = pinCanvasSize(el);
+                charts[id].resize(el.parentElement.clientWidth, h);
                 charts[id].update('none');
                 return;
             }
@@ -714,7 +713,7 @@
         function upsertOverviewSpark(id, c, i) {
             const el = document.getElementById(id);
             if (!el) return;
-            pinCanvasSize(el, ATTR_SPARK_H);
+            pinCanvasSize(el);
             const color = ['#0176d3', '#7e57c2', '#2e844a', '#e5a000', '#014486', '#ba0517'][i];
             const wantType = c.type === 'bar' ? 'bar' : 'line';
             const opts = attrSparkOpts();
@@ -729,7 +728,8 @@
                         ds.backgroundColor = color + '33';
                         ds.fill = c.type === 'area';
                     }
-                    charts[id].resize(el.parentElement.clientWidth, ATTR_SPARK_H);
+                    const h = pinCanvasSize(el);
+                    charts[id].resize(el.parentElement.clientWidth, h);
                     charts[id].update('none');
                     return;
                 }
@@ -874,12 +874,13 @@
         }
 
         function setAttrModel(key) {
-            if (!ATTRIBUTION_MODELS[key]) return;
+            if (!ATTRIBUTION_MODELS[key] || attrSwitching) return;
             if (key === currentAttrModel && currentTab === 'attribution' && document.getElementById('attrOverviewCards')?.dataset.ready === '1') {
                 document.querySelectorAll('[data-attr]').forEach(el => el.classList.toggle('active', el.dataset.attr === key));
                 if (currentTab === 'attribution') setHashQuiet('attribution-' + key);
                 return;
             }
+            attrSwitching = true;
             if (attrOverviewTimer) { clearTimeout(attrOverviewTimer); attrOverviewTimer = null; }
             if (attrChartsTimer) { clearTimeout(attrChartsTimer); attrChartsTimer = null; }
             const gen = ++attrRenderGen;
@@ -894,6 +895,7 @@
                 attrChartsTimer = null;
                 if (gen !== attrRenderGen) return;
                 initAttributionCharts(key);
+                attrSwitching = false;
             }, 0);
             document.querySelectorAll('[data-attr]').forEach(el => el.classList.toggle('active', el.dataset.attr === key));
             if (currentTab === 'attribution') setHashQuiet('attribution-' + key);
