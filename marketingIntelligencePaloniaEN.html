@@ -955,18 +955,17 @@
             }
         }
 
+        function gotoAttrModel(key) {
+            if (!ATTRIBUTION_MODELS[key]) return;
+            if (key === currentAttrModel && currentTab === 'attribution') return;
+            location.hash = 'attribution-' + key;
+            location.reload();
+        }
+
         function bindSidebar() {
             document.querySelectorAll('[data-goto]').forEach(el => { el.onclick = () => showTab(el.dataset.goto); });
             document.querySelectorAll('[data-attr]').forEach(el => {
-                el.onclick = () => {
-                    const key = el.dataset.attr;
-                    if (currentTab !== 'attribution') {
-                        currentAttrModel = key;
-                        showTab('attribution');
-                    } else {
-                        setAttrModel(key);
-                    }
-                };
+                el.onclick = () => gotoAttrModel(el.dataset.attr);
             });
         }
 
@@ -981,7 +980,10 @@
                 const model = h.replace('attribution-', '') || 'last-touch';
                 if (!ATTRIBUTION_MODELS[model]) return;
                 if (currentTab === 'attribution') {
-                    if (model !== currentAttrModel) setAttrModel(model);
+                    if (model !== currentAttrModel) {
+                        location.hash = 'attribution-' + model;
+                        location.reload();
+                    }
                     return;
                 }
                 currentAttrModel = model;
