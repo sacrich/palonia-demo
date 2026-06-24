@@ -54,11 +54,11 @@
         .action-row { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid #f5f5f5; font-size: 12px; }
         .action-row:last-of-type { border-bottom: none; }
         .chart-donut { height: min(42vh, 400px); min-height: 300px; position: relative; flex: 1; }
-        .chart-donut-lg { height: min(36vh, 340px); min-height: 280px; overflow: hidden; }
+        .chart-donut-lg { height: 300px; min-height: 280px; width: 100%; position: relative; overflow: hidden; }
         .chart-bar-h { height: min(40vh, 380px); min-height: 300px; flex: 1; }
-        .chart-bar-stack { height: min(38vh, 360px); min-height: 300px; overflow: hidden; }
-        .chart-mini-area { height: 72px; min-height: 72px; max-height: 72px; overflow: hidden; flex: none !important; }
-        .chart-mini-area canvas, .chart-donut-lg canvas { display: block !important; max-width: 100% !important; }
+        .chart-bar-stack { height: 300px; min-height: 280px; width: 100%; position: relative; overflow: hidden; }
+        .chart-mini-area { height: 72px; min-height: 72px; width: 100%; position: relative; overflow: hidden; flex: none !important; }
+        .chart-mini-area canvas, .chart-donut-lg canvas, .chart-bar-stack canvas { display: block !important; max-width: 100% !important; }
         #view-attribution { overflow-x: hidden; }
         #attrOverviewCards > .attr-overview-card { min-width: 0; overflow: hidden; }
         .attr-overview-card { min-height: 168px; }
@@ -442,57 +442,44 @@
         let currentTab = 'home';
         let currentAttrModel = 'last-touch';
         let homeDonutMode = 'revenue';
-        let attrOverviewTimer = null;
-        let attrChartsTimer = null;
         let suppressHashBoot = false;
-        let attrRenderGen = 0;
         let attrSwitching = false;
         const ATTR_OVERVIEW_COUNT = 6;
+        const ATTR_CHART_IDS = [
+            'attrOv0', 'attrOv1', 'attrOv2', 'attrOv3', 'attrOv4', 'attrOv5',
+            'attrLeadsDonut', 'attrOppsDonut', 'attrSpendDonut', 'attrRevDonut',
+            'attrLeadStack', 'attrOppStack'
+        ];
         const CHART_NO_ANIM = { animation: false, animations: { colors: false, x: false, y: false } };
+        const ATTR_SPARK_OPTS = {
+            responsive: true,
+            maintainAspectRatio: false,
+            ...CHART_NO_ANIM,
+            plugins: { legend: { display: false }, datalabels: { display: false }, tooltip: { enabled: false } },
+            scales: { x: { display: false }, y: { display: false } },
+            elements: { point: { radius: 0 }, line: { borderWidth: 2, tension: 0.4 } },
+            events: []
+        };
 
-        function attrSparkOpts() {
-            return {
-                responsive: false,
-                maintainAspectRatio: false,
-                ...CHART_NO_ANIM,
-                plugins: { legend: { display: false }, datalabels: { display: false }, tooltip: { enabled: false } },
-                scales: { x: { display: false }, y: { display: false } },
-                elements: { point: { radius: 0 }, line: { borderWidth: 2, tension: 0.4 } },
-                events: []
+        function destroyAttrCharts() {
+            ATTR_CHART_IDS.forEach(destroyChart);
+        }
+
+        function runWhenAttrLayoutReady(fn) {
+            const view = document.getElementById('view-attribution');
+            let attempts = 0;
+            const tick = () => {
+                attempts++;
+                if (currentTab !== 'attribution' || !view?.classList.contains('active')) return;
+                const probe = view.querySelector('.chart-donut-lg');
+                const ready = probe && probe.offsetHeight >= 200 && probe.offsetWidth >= 120;
+                if (!ready && attempts < 40) {
+                    requestAnimationFrame(tick);
+                    return;
+                }
+                fn();
             };
-        }
-
-        function pinCanvasSize(el) {
-            if (!el) return 0;
-            const box = el.parentElement;
-            const w = Math.max((box && (box.clientWidth || box.offsetWidth)) || 200, 80);
-            let h = Math.max((box && (box.clientHeight || box.offsetHeight)) || 0, 0);
-            if (box?.classList.contains('chart-donut-lg')) h = Math.max(h, 280);
-            else if (box?.classList.contains('chart-mini-area')) h = Math.max(h, 72);
-            else h = Math.max(h, 40);
-            const dpr = window.devicePixelRatio || 1;
-            el.style.width = '100%';
-            el.style.height = h + 'px';
-            el.style.maxWidth = '100%';
-            el.style.display = 'block';
-            el.width = Math.round(w * dpr);
-            el.height = Math.round(h * dpr);
-            return h;
-        }
-
-        function whenAttrLayoutReady(fn) {
-            requestAnimationFrame(() => requestAnimationFrame(fn));
-        }
-
-        function paintAttributionCharts(modelKey, gen) {
-            whenAttrLayoutReady(() => {
-                if (gen != null && gen !== attrRenderGen) return;
-                const m = ATTRIBUTION_MODELS[modelKey];
-                if (!m || currentTab !== 'attribution') return;
-                m.overview.forEach((c, i) => upsertOverviewSpark('attrOv' + i, c, i));
-                initAttributionCharts(modelKey);
-                attrSwitching = false;
-            });
+            requestAnimationFrame(tick);
         }
 
         const donutPlugin = {
@@ -518,12 +505,6 @@
             const next = hash.startsWith('#') ? hash : '#' + hash;
             if (location.hash === next) return;
             history.replaceState(null, '', location.pathname + location.search + next);
-        }
-
-        function destroyAttrOverviewCharts() {
-            Object.keys(charts).forEach(function (k) {
-                if (k.indexOf('attrOv') === 0) destroyChart(k);
-            });
         }
 
         const miniSparkOpts = {
@@ -556,8 +537,6 @@
             destroyChart(id);
             const el = document.getElementById(id);
             if (!el) return;
-            const h = pinCanvasSize(el);
-            const w = el.parentElement?.clientWidth || 200;
             const total = values.reduce((a, b) => a + b, 0);
             charts[id] = new Chart(el, {
                 type: 'doughnut',
@@ -566,7 +545,7 @@
                     datasets: [{ data: values, backgroundColor: labels.map((_, i) => ATTR_COLORS[i % ATTR_COLORS.length] || HOME_CHANNEL_COLORS[i % 5]), borderWidth: 2, borderColor: '#fff' }]
                 },
                 options: {
-                    responsive: false, maintainAspectRatio: false, cutout: '58%',
+                    responsive: true, maintainAspectRatio: false, cutout: '58%',
                     layout: { padding: 8 },
                     ...CHART_NO_ANIM,
                     plugins: {
@@ -581,24 +560,35 @@
                     }
                 }
             });
-            charts[id].resize(w, h);
         }
 
-        function upsertRichDonut(id, values, labels, legendRight = true) {
+        function makeAttrDonut(id, values, labels) {
+            destroyChart(id);
             const el = document.getElementById(id);
             if (!el) return;
-            pinCanvasSize(el);
-            const bg = labels.map((_, i) => ATTR_COLORS[i % ATTR_COLORS.length] || HOME_CHANNEL_COLORS[i % 5]);
-            if (charts[id] && charts[id].config.type === 'doughnut') {
-                charts[id].data.labels = labels;
-                charts[id].data.datasets[0].data = values;
-                charts[id].data.datasets[0].backgroundColor = bg;
-                const h = pinCanvasSize(el);
-                charts[id].resize(el.parentElement.clientWidth, h);
-                charts[id].update('none');
-                return;
-            }
-            makeRichDonut(id, values, labels, legendRight);
+            const total = values.reduce((a, b) => a + b, 0);
+            charts[id] = new Chart(el, {
+                type: 'doughnut',
+                data: {
+                    labels,
+                    datasets: [{ data: values, backgroundColor: labels.map((_, i) => ATTR_COLORS[i % ATTR_COLORS.length]), borderWidth: 2, borderColor: '#fff' }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false, cutout: '58%',
+                    layout: { padding: 8 },
+                    ...CHART_NO_ANIM,
+                    plugins: {
+                        legend: { position: 'right', labels: { boxWidth: 10, font: { size: 10 }, padding: 8 } },
+                        datalabels: {
+                            color: '#fff', font: { weight: 'bold', size: 9 },
+                            formatter: (v) => {
+                                const pct = Math.round(v / total * 100);
+                                return pct >= 4 ? (v > 50 ? pct + '%' : v) : '';
+                            }
+                        }
+                    }
+                }
+            });
         }
 
         function initHomeCharts() {
@@ -730,45 +720,24 @@
             wrap.dataset.ready = '1';
         }
 
-        function upsertOverviewSpark(id, c, i) {
+        function makeOverviewSpark(id, c, i) {
+            destroyChart(id);
             const el = document.getElementById(id);
             if (!el) return;
-            pinCanvasSize(el);
             const color = ['#0176d3', '#7e57c2', '#2e844a', '#e5a000', '#014486', '#ba0517'][i];
-            const wantType = c.type === 'bar' ? 'bar' : 'line';
-            const opts = attrSparkOpts();
-            if (charts[id]) {
-                if (charts[id].config.type !== wantType) destroyChart(id);
-                else {
-                    const ds = charts[id].data.datasets[0];
-                    ds.data = c.spark;
-                    if (wantType === 'bar') ds.backgroundColor = color + '99';
-                    else {
-                        ds.borderColor = color;
-                        ds.backgroundColor = color + '33';
-                        ds.fill = c.type === 'area';
-                    }
-                    const h = pinCanvasSize(el);
-                    charts[id].resize(el.parentElement.clientWidth, h);
-                    charts[id].update('none');
-                    return;
-                }
-            }
             if (c.type === 'bar') {
                 charts[id] = new Chart(el, {
                     type: 'bar',
                     data: { labels: DATE_LABELS, datasets: [{ data: c.spark, backgroundColor: color + '99', borderRadius: 2 }] },
-                    options: { ...opts, plugins: { ...opts.plugins, datalabels: { display: false } } }
+                    options: { ...ATTR_SPARK_OPTS, plugins: { ...ATTR_SPARK_OPTS.plugins, datalabels: { display: false } } }
                 });
             } else {
                 charts[id] = new Chart(el, {
                     type: 'line',
                     data: { labels: DATE_LABELS, datasets: [{ data: c.spark, borderColor: color, backgroundColor: color + '33', fill: c.type === 'area' }] },
-                    options: opts
+                    options: ATTR_SPARK_OPTS
                 });
             }
-            const h = pinCanvasSize(el);
-            charts[id].resize(el.parentElement.clientWidth, h);
         }
 
         function renderAttrOverview(model) {
@@ -876,40 +845,36 @@
                 `).join('')}</tbody>`;
         }
 
-        function initAttributionCharts(modelKey) {
+        function buildAttrCharts(modelKey) {
             const m = ATTRIBUTION_MODELS[modelKey];
+            if (!m || currentTab !== 'attribution') return;
+            m.overview.forEach((c, i) => makeOverviewSpark('attrOv' + i, c, i));
             const leadVals = scaleCredit(m.credit.leads, 490);
             const oppVals = scaleCredit(m.credit.opps, 121);
             const spendVals = scaleCredit(m.credit.spend, 68);
             const revVals = scaleCredit(m.credit.revenue, 198);
-            upsertRichDonut('attrLeadsDonut', leadVals, ATTR_CHANNELS);
-            upsertRichDonut('attrOppsDonut', oppVals, ATTR_CHANNELS);
-            upsertRichDonut('attrSpendDonut', spendVals.map(v => v * 1000), ATTR_CHANNELS);
-            upsertRichDonut('attrRevDonut', revVals.map(v => v * 1000), ATTR_CHANNELS);
-            if (!charts.attrLeadStack) initAttrStackedBars();
+            makeAttrDonut('attrLeadsDonut', leadVals, ATTR_CHANNELS);
+            makeAttrDonut('attrOppsDonut', oppVals, ATTR_CHANNELS);
+            makeAttrDonut('attrSpendDonut', spendVals.map(v => v * 1000), ATTR_CHANNELS);
+            makeAttrDonut('attrRevDonut', revVals.map(v => v * 1000), ATTR_CHANNELS);
+            initAttrStackedBars();
+            attrSwitching = false;
         }
 
         function setAttrModel(key) {
             if (!ATTRIBUTION_MODELS[key] || attrSwitching) return;
-            if (key === currentAttrModel && currentTab === 'attribution' && document.getElementById('attrOverviewCards')?.dataset.ready === '1') {
-                document.querySelectorAll('[data-attr]').forEach(el => el.classList.toggle('active', el.dataset.attr === key));
-                if (currentTab === 'attribution') setHashQuiet('attribution-' + key);
-                return;
-            }
             attrSwitching = true;
-            if (attrOverviewTimer) { clearTimeout(attrOverviewTimer); attrOverviewTimer = null; }
-            if (attrChartsTimer) { clearTimeout(attrChartsTimer); attrChartsTimer = null; }
-            const gen = ++attrRenderGen;
             currentAttrModel = key;
             const m = ATTRIBUTION_MODELS[key];
             document.getElementById('attrTitle').textContent = m.title;
             document.getElementById('attrDesc').textContent = m.desc;
+            destroyAttrCharts();
             renderAttrOverview(m);
             renderAttrKpis(m);
             renderAttrTable(key);
-            paintAttributionCharts(key, gen);
             document.querySelectorAll('[data-attr]').forEach(el => el.classList.toggle('active', el.dataset.attr === key));
             if (currentTab === 'attribution') setHashQuiet('attribution-' + key);
+            runWhenAttrLayoutReady(() => buildAttrCharts(key));
         }
 
         const SIDEBARS = {
@@ -943,29 +908,24 @@
             if (tab === 'home') setTimeout(initHomeCharts, 80);
             if (tab === 'analytics') setTimeout(initAnalyticsCharts, 80);
             if (tab === 'attribution') {
-                whenAttrLayoutReady(() => { if (!charts.attrLeadStack) initAttrStackedBars(); });
-                if (prevTab !== tab || document.getElementById('attrOverviewCards')?.dataset.ready !== '1') {
-                    setAttrModel(currentAttrModel);
-                } else {
-                    paintAttributionCharts(currentAttrModel, attrRenderGen);
-                    document.querySelectorAll('[data-attr]').forEach(el => el.classList.toggle('active', el.dataset.attr === currentAttrModel));
-                }
+                setAttrModel(currentAttrModel);
             } else {
                 setHashQuiet(tab);
             }
         }
 
-        function gotoAttrModel(key) {
-            if (!ATTRIBUTION_MODELS[key]) return;
-            if (key === currentAttrModel && currentTab === 'attribution') return;
-            location.hash = 'attribution-' + key;
-            location.reload();
-        }
-
         function bindSidebar() {
             document.querySelectorAll('[data-goto]').forEach(el => { el.onclick = () => showTab(el.dataset.goto); });
             document.querySelectorAll('[data-attr]').forEach(el => {
-                el.onclick = () => gotoAttrModel(el.dataset.attr);
+                el.onclick = () => {
+                    const key = el.dataset.attr;
+                    if (currentTab !== 'attribution') {
+                        currentAttrModel = key;
+                        showTab('attribution');
+                    } else if (key !== currentAttrModel) {
+                        setAttrModel(key);
+                    }
+                };
             });
         }
 
@@ -979,13 +939,6 @@
             if (h.startsWith('attribution')) {
                 const model = h.replace('attribution-', '') || 'last-touch';
                 if (!ATTRIBUTION_MODELS[model]) return;
-                if (currentTab === 'attribution') {
-                    if (model !== currentAttrModel) {
-                        location.hash = 'attribution-' + model;
-                        location.reload();
-                    }
-                    return;
-                }
                 currentAttrModel = model;
                 showTab('attribution');
                 return;
