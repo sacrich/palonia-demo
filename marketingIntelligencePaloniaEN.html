@@ -60,7 +60,6 @@
         .chart-mini-area { height: 72px; min-height: 72px; max-height: 72px; overflow: hidden; flex: none !important; }
         .chart-mini-area canvas, .chart-donut-lg canvas { display: block !important; max-width: 100% !important; }
         #view-attribution { overflow-x: hidden; }
-        #attrOverviewCards { contain: layout style; }
         #attrOverviewCards > .attr-overview-card { min-width: 0; overflow: hidden; }
         .attr-overview-card { min-height: 168px; }
         .donut-center-label { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; font-weight: 700; text-align: center; }
@@ -466,8 +465,11 @@
         function pinCanvasSize(el) {
             if (!el) return 0;
             const box = el.parentElement;
-            const w = Math.max((box && box.clientWidth) || 200, 80);
-            const h = Math.max((box && box.clientHeight) || 72, 40);
+            const w = Math.max((box && (box.clientWidth || box.offsetWidth)) || 200, 80);
+            let h = Math.max((box && (box.clientHeight || box.offsetHeight)) || 0, 0);
+            if (box?.classList.contains('chart-donut-lg')) h = Math.max(h, 280);
+            else if (box?.classList.contains('chart-mini-area')) h = Math.max(h, 72);
+            else h = Math.max(h, 40);
             const dpr = window.devicePixelRatio || 1;
             el.style.width = '100%';
             el.style.height = h + 'px';
@@ -476,6 +478,21 @@
             el.width = Math.round(w * dpr);
             el.height = Math.round(h * dpr);
             return h;
+        }
+
+        function whenAttrLayoutReady(fn) {
+            requestAnimationFrame(() => requestAnimationFrame(fn));
+        }
+
+        function paintAttributionCharts(modelKey, gen) {
+            whenAttrLayoutReady(() => {
+                if (gen != null && gen !== attrRenderGen) return;
+                const m = ATTRIBUTION_MODELS[modelKey];
+                if (!m || currentTab !== 'attribution') return;
+                m.overview.forEach((c, i) => upsertOverviewSpark('attrOv' + i, c, i));
+                initAttributionCharts(modelKey);
+                attrSwitching = false;
+            });
         }
 
         const donutPlugin = {
@@ -539,6 +556,8 @@
             destroyChart(id);
             const el = document.getElementById(id);
             if (!el) return;
+            const h = pinCanvasSize(el);
+            const w = el.parentElement?.clientWidth || 200;
             const total = values.reduce((a, b) => a + b, 0);
             charts[id] = new Chart(el, {
                 type: 'doughnut',
@@ -562,6 +581,7 @@
                     }
                 }
             });
+            charts[id].resize(w, h);
         }
 
         function upsertRichDonut(id, values, labels, legendRight = true) {
@@ -747,10 +767,11 @@
                     options: opts
                 });
             }
+            const h = pinCanvasSize(el);
+            charts[id].resize(el.parentElement.clientWidth, h);
         }
 
-        function renderAttrOverview(model, gen) {
-            if (attrOverviewTimer) { clearTimeout(attrOverviewTimer); attrOverviewTimer = null; }
+        function renderAttrOverview(model) {
             ensureAttrOverviewShell();
             const wrap = document.getElementById('attrOverviewCards');
             model.overview.forEach((c, i) => {
@@ -763,11 +784,6 @@
                 foot.className = 'text-[10px] mt-1' + (c.empty ? ' text-amber-700' : ' text-[#0176d3]');
                 foot.innerHTML = c.empty ? 'No data available for selected range.' : '<i class="fa-solid fa-diamond text-[6px]"></i> Analyzing your data';
             });
-            attrOverviewTimer = setTimeout(() => {
-                attrOverviewTimer = null;
-                if (gen !== attrRenderGen) return;
-                model.overview.forEach((c, i) => upsertOverviewSpark('attrOv' + i, c, i));
-            }, 0);
         }
 
         function renderAttrKpis(model) {
@@ -888,15 +904,10 @@
             const m = ATTRIBUTION_MODELS[key];
             document.getElementById('attrTitle').textContent = m.title;
             document.getElementById('attrDesc').textContent = m.desc;
-            renderAttrOverview(m, gen);
+            renderAttrOverview(m);
             renderAttrKpis(m);
             renderAttrTable(key);
-            attrChartsTimer = setTimeout(() => {
-                attrChartsTimer = null;
-                if (gen !== attrRenderGen) return;
-                initAttributionCharts(key);
-                attrSwitching = false;
-            }, 0);
+            paintAttributionCharts(key, gen);
             document.querySelectorAll('[data-attr]').forEach(el => el.classList.toggle('active', el.dataset.attr === key));
             if (currentTab === 'attribution') setHashQuiet('attribution-' + key);
         }
@@ -932,10 +943,11 @@
             if (tab === 'home') setTimeout(initHomeCharts, 80);
             if (tab === 'analytics') setTimeout(initAnalyticsCharts, 80);
             if (tab === 'attribution') {
-                if (!charts.attrLeadStack) initAttrStackedBars();
+                whenAttrLayoutReady(() => { if (!charts.attrLeadStack) initAttrStackedBars(); });
                 if (prevTab !== tab || document.getElementById('attrOverviewCards')?.dataset.ready !== '1') {
                     setAttrModel(currentAttrModel);
                 } else {
+                    paintAttributionCharts(currentAttrModel, attrRenderGen);
                     document.querySelectorAll('[data-attr]').forEach(el => el.classList.toggle('active', el.dataset.attr === currentAttrModel));
                 }
             } else {
